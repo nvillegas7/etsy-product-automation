@@ -65,6 +65,13 @@ class ColorPalette:
     grid_line: str
     tab_active: str
     tab_inactive: str
+    # Ground-legibility flags (default False -> existing palettes unchanged):
+    #  is_pastel  the palette's fills are pale-on-light; labels must be pinned
+    #             to a darker ink mix or the searchable text washes out.
+    #  is_dark    the palette's ground is a dark plate; paper_c must return it
+    #             raw (a 65% blend toward white would destroy the dark ground).
+    is_pastel: bool = False
+    is_dark: bool = False
 
     # Convenience helpers ------------------------------------------------
 
@@ -375,10 +382,26 @@ class Theme:
     # -- Ink (palette architecture) ------------------------------------------
 
     def paper_c(self) -> tuple[int, int, int]:
-        """Page surface color (raw background on the poster shell)."""
-        if self.design.shell == "poster":
+        """Page surface color.
+
+        A dark-ground palette (``is_dark``) returns its background raw on
+        every shell -- blending 65% toward white would wash the dark plate
+        out to grey.  The poster shell also returns the raw background (its
+        header has no reversed plate).  Every other case keeps the classic
+        65%-toward-white lift, so existing light palettes are unchanged.
+        """
+        if self.palette.is_dark or self.design.shell == "poster":
             return self.rgb("background")
         return blend(self.rgb("background"), WHITE, 0.65)
+
+    def _label_ink_t(self) -> float:
+        """How far a label may lean off ``text`` toward ``primary``.
+
+        Pastel palettes pin labels much closer to the dark ``text`` ink
+        (0.16) so a pale primary can never lift the searchable label off the
+        legible floor; every other palette keeps the classic 0.3 mix.
+        """
+        return 0.16 if self.palette.is_pastel else 0.3
 
     def desk_c(self) -> tuple[int, int, int]:
         return blend(self.rgb("background"), self.rgb("secondary"),
@@ -424,11 +447,11 @@ class Theme:
         """Label color when the text sits ON a band fill."""
         if self.ink.band == "solid":
             return WHITE
-        return blend(self.rgb("text"), self.rgb("primary"), 0.3)
+        return blend(self.rgb("text"), self.rgb("primary"), self._label_ink_t())
 
     def label_c(self) -> tuple[int, int, int]:
         """Label color when the text sits directly on the paper."""
-        return blend(self.rgb("text"), self.rgb("primary"), 0.3)
+        return blend(self.rgb("text"), self.rgb("primary"), self._label_ink_t())
 
     def bullet_c(self) -> tuple[int, int, int]:
         return self.rgb("accent" if self.ink.accent_bullets else "primary")
@@ -475,6 +498,8 @@ def _build_palettes() -> dict[str, ColorPalette]:
             grid_line=vals["grid_line"],
             tab_active=vals["tab_active"],
             tab_inactive=vals["tab_inactive"],
+            is_pastel=vals.get("is_pastel", False),
+            is_dark=vals.get("is_dark", False),
         )
     return palettes
 

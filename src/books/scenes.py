@@ -445,6 +445,41 @@ def _butterfly(d: Draw, cx: float, cy: float, s: float, wing: RGB) -> None:
     d.ellipse(cx, cy, s * 0.16, s * 0.7, fill=(90, 80, 90))
 
 
+def _searchbug(d: Draw, cx: float, cy: float, s: float, body: RGB) -> None:
+    """A tiny findable ladybug -- the recurring 'search critter' for the
+    oldest band's seek-and-find spreads."""
+    d.ellipse(cx, cy, s, s * 0.86, fill=body)
+    d.line(cx, cy - s * 0.86, cx, cy + s * 0.78, color=darken(body, 0.4),
+           lw=max(s * 0.10, 0.4))
+    d.circle(cx, cy - s * 0.92, s * 0.4, fill=(52, 46, 54))
+    for dx, dy in ((-0.42, -0.16), (0.42, -0.16), (-0.34, 0.36), (0.34, 0.36)):
+        d.dot(cx + dx * s, cy + dy * s, s * 0.16, (44, 40, 48))
+    for kx in (-0.4, 0.4):
+        d.line(cx + kx * s * 0.28, cy - s * 0.92, cx + kx * s * 0.62, cy - s * 1.28,
+               color=(52, 46, 54), lw=max(s * 0.08, 0.35))
+
+
+def _search_critter(
+    d: Draw, pal: BookPalette, horizon: float, rng: random.Random,
+) -> None:
+    """Plant one small critter to 'find' on the page.  Its spot is driven by
+    the per-page scene rng, so it hides somewhere different each spread --
+    sustained-attention seek-and-find for early readers (6-8).  Colour-only:
+    coloring pages stay clean."""
+    if d.line_art:
+        return
+    if rng.random() < 0.5:
+        # up in the sky/treetops
+        cx = rng.uniform(PAGE_W * 0.10, PAGE_W * 0.90)
+        cy = rng.uniform(20, max(28.0, horizon * 0.5))
+    else:
+        # tucked low against one side, clear of the center where text/heroes go
+        cx = (rng.uniform(PAGE_W * 0.05, PAGE_W * 0.17) if rng.random() < 0.5
+              else rng.uniform(PAGE_W * 0.83, PAGE_W * 0.95))
+        cy = rng.uniform(horizon * 0.58, horizon - 6)
+    _searchbug(d, cx, cy, 4.0, (222, 74, 68))
+
+
 def _far_treeline(d: Draw, pal: BookPalette, horizon: float, rng: random.Random) -> None:
     """A hazy row of distant trees hugging the horizon (atmospheric depth)."""
     if d.line_art:
@@ -1000,6 +1035,7 @@ def draw_scene(
     zone: str = "",
     foreground: bool = True,
     background_cast: bool = True,
+    age_band: str = "4-6",
 ) -> float:
     """Draw a full-bleed, layered storybook scene.
 
@@ -1012,6 +1048,10 @@ def draw_scene(
            empty selects the world's home zone.
     foreground / background_cast : toggle the near/far depth layers (both are
            colour-only and always skipped in ``line_art`` mode).
+    age_band : ``2-4`` | ``4-6`` | ``6-8`` -- scene complexity by age.
+           2-4 strips the far cast and thins the midground props for a bold,
+           uncluttered, high-contrast page (one dominant subject).  6-8 keeps
+           the full depth stack and adds a recurring seek-and-find critter.
 
     Returns the y of the ground line where characters should stand.
     """
@@ -1022,6 +1062,11 @@ def draw_scene(
         horizon = SHOT_HORIZON.get(shot, 0.63) * PAGE_H
     if line_art:
         sky_offset = max(sky_offset, 28.0)  # keep sky props below the header mask
+
+    # Toddler pages: fewer, bolder shapes and no distant clutter.
+    if age_band == "2-4" and not line_art:
+        sparse = True
+        background_cast = False
 
     _sky(d, palette, horizon, time_of_day)
     sun_x = _sky_objects(d, palette, rng, time_of_day, horizon, sky_offset)
@@ -1050,5 +1095,11 @@ def draw_scene(
 
     if foreground:
         _foreground(d, setting, palette, horizon, rng, shot, line_art)
+
+    # Early-reader seek-and-find: a little critter hiding in a new spot each
+    # spread.  Drawn last so it sits on top and is findable; never on toddler
+    # pages (keep them simple) or coloring pages (keep them clean).
+    if age_band == "6-8":
+        _search_critter(d, palette, horizon, rng)
 
     return horizon + (PAGE_H - horizon) * 0.42

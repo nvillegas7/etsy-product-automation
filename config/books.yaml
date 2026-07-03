@@ -265,3 +265,20 @@ book_params:
       accent2: "#7B4CC6"
       panel: "#FFFFFF"
       text: "#4A2C4E"
+    # Gentle bedtime palette: deep-blue night sky with BRIGHT warm accents so
+    # a dark scene still keeps the high figure-ground contrast young eyes need.
+    # A soft moon (sun slot) glows warm; the white panel keeps text readable.
+    night_sky:
+      name: "Night Sky"
+      sky_top: "#2A315F"
+      sky_bottom: "#5566A6"
+      sun: "#FFE7A8"
+      cloud: "#B7C2E8"
+      hill: "#3C447C"
+      ground: "#49548C"
+      ground_dark: "#39426F"
+      water: "#5A6BB2"
+      accent: "#FFC24C"
+      accent2: "#FF93C0"
+      panel: "#FFFFFF"
+      text: "#2A2E54"

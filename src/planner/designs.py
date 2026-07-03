@@ -93,6 +93,13 @@ PRESETS: dict[str, DesignTheme] = {
     "blueprint": _p("blueprint", "flat",   "hourly",  "geometric", "grotesk",    "accent-pop",    "band",      "graph"),
     "gallery":   _p("gallery",   "poster", "airy",    "minimal",   "serif",      "ink-on-paper",  "editorial", "dot"),
     "noir":      _p("noir",      "poster", "boxed",   "geometric", "grotesk",    "filled-blocks", "band",      "blank"),
+    # --- BOHO lane (earthy botanical, warm; boho arch/wildflower pattern) ---
+    "terracotta": _p("terracotta", "binder", "boxed",   "botanical", "serif",   "soft-wash",   "pattern", "dot"),
+    "wildflower": _p("wildflower", "binder", "columns", "botanical", "script",  "soft-wash",   "band",    "ruled"),
+    # --- PASTEL lane (soft tonal, legible; is_pastel palettes keep ink dark) -
+    "lavender":   _p("lavender",   "cards",  "airy",    "botanical", "serif",   "accent-pop",  "pattern", "dot"),
+    "confetti":   _p("confetti",   "cards",  "boxed",   "geometric", "grotesk", "soft-wash",   "pattern", "dot"),
+    "blush":      _p("blush",      "cards",  "boxed",   "botanical", "serif",   "ink-on-paper","band",    "ruled"),
 }
 
 # ---------------------------------------------------------------------------
@@ -150,8 +157,8 @@ PRESETS: dict[str, DesignTheme] = {
 PRESET_PALETTES: dict[str, tuple[str, ...]] = {
     "classic": ("neutral_beige", "soft_sage", "dusty_rose", "ocean_blue",
                 "charcoal_minimal", "boho_pink", "classic_boho",
-                "modern_minimal"),
-    "meadow": ("soft_sage", "classic_boho"),
+                "modern_minimal", "terracotta_clay", "sage_linen"),
+    "meadow": ("soft_sage", "classic_boho", "sage_linen", "terracotta_clay"),
     "midnight": ("ocean_blue", "charcoal_minimal"),
     "almanac": ("neutral_beige", "charcoal_minimal"),
     "atelier": ("dusty_rose", "neutral_beige"),
@@ -162,6 +169,13 @@ PRESET_PALETTES: dict[str, tuple[str, ...]] = {
     "blueprint": ("ocean_blue", "charcoal_minimal"),
     "gallery": ("modern_minimal", "neutral_beige"),
     "noir": ("modern_minimal", "charcoal_minimal"),
+    "terracotta": ("terracotta_clay", "dusty_adobe", "classic_boho",
+                   "sage_linen"),
+    "wildflower": ("sage_linen", "terracotta_clay", "classic_boho",
+                   "soft_sage"),
+    "lavender": ("lavender_haze", "mint_cream", "blush_butter", "patina_blue"),
+    "confetti": ("blush_butter", "mint_cream", "lavender_haze", "dusty_rose"),
+    "blush": ("blush_butter", "dusty_adobe", "dusty_rose", "patina_blue"),
 }
 
 

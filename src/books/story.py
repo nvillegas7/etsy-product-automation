@@ -56,6 +56,7 @@ class Story:
     mentor_name: str                  # e.g. "Grandma Owl"
     setting: str
     moral: str
+    age_band: str = "4-6"
     scenario_id: str = ""
     context: dict = field(default_factory=dict)
 
@@ -1277,10 +1278,10 @@ BEAT_VISUALS: dict[str, tuple[str, str, str, bool, bool, str, str, str]] = {
     "friend":        ("happy", "wave", "excited", True, False, "right", "day", "wide"),
     "activity":      ("excited", "arms_up", "happy", True, False, "center", "day", "corner"),
     "problem_setup": ("surprised", "point", "happy", True, False, "left", "day", "wide"),
-    "problem_grows": ("worried", "stand", "happy", False, False, "closeup", "day", "close"),
-    "wrong_choice":  ("sad", "stand", "sad", True, False, "right", "day", "wide"),
-    "consequence":   ("sad", "stand", "sad", False, False, "left", "overcast", "corner"),
-    "feelings":      ("sad", "stand", "sad", False, False, "closeup", "overcast", "close"),
+    "problem_grows": ("worried", "slump", "happy", False, False, "closeup", "day", "close"),
+    "wrong_choice":  ("sad", "slump", "sad", True, False, "right", "day", "wide"),
+    "consequence":   ("sad", "slump", "sad", False, False, "left", "overcast", "corner"),
+    "feelings":      ("sad", "slump", "sad", False, False, "closeup", "overcast", "close"),
     "mentor":        ("curious", "stand", "happy", False, True, "left", "day", "wide"),
     "guidance":      ("curious", "stand", "happy", False, True, "right", "day", "corner"),
     "decision":      ("excited", "point", "happy", False, False, "closeup", "day", "close"),
@@ -1467,6 +1468,7 @@ def build_story(params: dict) -> Story:
         mentor_name=mentor_name,
         setting=setting,
         moral=moral,
+        age_band=age_band,
         scenario_id=scenario["id"],
         context=ctx,
     )

@@ -18,6 +18,8 @@ niches:
       - "soft_sage"
       - "boho_pink"
       - "neutral_beige"
+      - "mint_cream"
+      - "lavender_haze"
     subtitle: "Stay organized with a planner designed for ADHD minds"
     features:
       - "Brain dump sections"
@@ -104,6 +106,8 @@ niches:
       - "dusty_rose"
       - "boho_pink"
       - "soft_sage"
+      - "blush_butter"
+      - "lavender_haze"
     subtitle: "Ace your semester with organized study planning"
     features:
       - "Assignment tracker"
@@ -147,6 +151,8 @@ niches:
       - "ocean_blue"
       - "classic_boho"
       - "soft_sage"
+      - "sage_linen"
+      - "patina_blue"
     subtitle: "Crush your fitness goals with structured planning"
     features:
       - "Workout log"
@@ -190,6 +196,8 @@ niches:
       - "classic_boho"
       - "neutral_beige"
       - "dusty_rose"
+      - "terracotta_clay"
+      - "dusty_adobe"
     subtitle: "Plan your school year with confidence"
     features:
       - "Lesson planning"

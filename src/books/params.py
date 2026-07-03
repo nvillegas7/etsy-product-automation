@@ -42,6 +42,23 @@ _SETTING_PALETTES: dict[str, list[str]] = {
     "zoo": ["sunny_day", "spring_meadow", "sunset_glow"],
 }
 
+# Palettes whose mood suits a moral (soft preference).  Blended with the
+# setting preference below rather than overriding it, so a story's mood tilts
+# the colour choice (warm/energetic morals -> sunset warmth; calm/bedtime
+# morals -> soft blues and the night_sky palette) while variety is preserved.
+_MORAL_PALETTES: dict[str, list[str]] = {
+    "courage": ["sunset_glow", "sunny_day"],
+    "teamwork": ["sunny_day", "sunset_glow"],
+    "perseverance": ["sunset_glow", "sunny_day"],
+    "kindness": ["sunny_day", "spring_meadow", "ocean_breeze"],
+    "sharing": ["spring_meadow", "sunny_day"],
+    "patience": ["ocean_breeze", "spring_meadow", "night_sky"],
+    "honesty": ["ocean_breeze", "sunny_day"],
+    "politeness": ["sunny_day", "spring_meadow"],
+    "gratitude": ["berry_sweet", "autumn_cozy"],
+    "obedience": ["night_sky", "ocean_breeze"],
+}
+
 
 def _species_label(key: str) -> str:
     return key.replace("_", " ").title()
@@ -145,8 +162,12 @@ def pick_book_params(
     narrative_style = rng.choice(list(styles))
     page_count = int(rng.choice(list(page_counts)))
 
-    palette_prefs = [p for p in _SETTING_PALETTES.get(setting, []) if p in palette_names]
-    art_palette = rng.choice(palette_prefs or palette_names)
+    # Blend setting-mood and moral-mood preferences: both lists contribute
+    # candidates, so palettes suiting BOTH the place and the lesson are favored
+    # while every other palette stays reachable (variety preserved).
+    setting_prefs = [p for p in _SETTING_PALETTES.get(setting, []) if p in palette_names]
+    moral_prefs = [p for p in _MORAL_PALETTES.get(moral, []) if p in palette_names]
+    art_palette = rng.choice(setting_prefs + moral_prefs or palette_names)
 
     display_title = MORAL_TITLES.get(moral, "{name}'s Big Day").format(name=full_name)
     subtitle = f"A warm little story about {moral}"

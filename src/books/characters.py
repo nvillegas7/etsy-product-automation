@@ -34,7 +34,40 @@ EXPRESSIONS = (
     "happy", "sad", "surprised", "sleepy",
     "excited", "worried", "curious", "giggling",
 )
-POSES = ("stand", "arms_up", "wave", "point", "hug", "jump", "walk")
+POSES = ("stand", "arms_up", "wave", "point", "hug", "jump", "walk", "slump")
+
+# ---------------------------------------------------------------------------
+# Per-age-band character knobs (Kindchenschema / baby-schema)
+# ---------------------------------------------------------------------------
+# The book's age band is tagged onto the Draw instance by ``draw_character``
+# and read here, so a single call threads age all the way into the face and
+# limbs without changing 28 body-function signatures.
+#
+# Younger (2-4): eyes bigger and set LOWER in the head (the tall-forehead cue),
+# bolder outlines, rounder cheeks, simplest face.  Older (6-8): relatively
+# smaller eyes on the vertical midline, thinner outlines, a second eye sparkle
+# for a touch more detail.  Grounded in Glocker et al. baby-schema proportions
+# and the age-engagement dossier's per-band eye-size / contrast guidance.
+_AGE_FACE: dict[str, dict[str, float]] = {
+    #        eye-size  low-eye  stroke  catchlight  2nd-sparkle  blush
+    "2-4": {"eye": 1.14, "drop": 0.055, "stroke": 1.35, "catch": 0.42, "sparkle": 0, "blush": 1.12},
+    "4-6": {"eye": 1.00, "drop": 0.028, "stroke": 1.00, "catch": 0.34, "sparkle": 0, "blush": 1.00},
+    "6-8": {"eye": 0.88, "drop": 0.000, "stroke": 0.85, "catch": 0.28, "sparkle": 1, "blush": 0.90},
+}
+# Limb build: toddlers get short, thick extremities; early readers slimmer.
+_AGE_ARMS: dict[str, dict[str, float]] = {
+    "2-4": {"lw": 0.075, "hand": 0.056, "reach": 0.88},
+    "4-6": {"lw": 0.055, "hand": 0.045, "reach": 1.00},
+    "6-8": {"lw": 0.048, "hand": 0.040, "reach": 1.06},
+}
+
+
+def _face_knobs(d: "Draw") -> dict[str, float]:
+    return _AGE_FACE.get(getattr(d, "age_band", "4-6"), _AGE_FACE["4-6"])
+
+
+def _arm_knobs(d: "Draw") -> dict[str, float]:
+    return _AGE_ARMS.get(getattr(d, "age_band", "4-6"), _AGE_ARMS["4-6"])
 
 
 # ---------------------------------------------------------------------------
@@ -105,49 +138,55 @@ def _face(
     lower half of the head), pupils get white highlight dots, mouth is a
     small arc, blush is soft ellipses.
     """
-    eo = fw * 0.30          # eye x-offset
-    er = fw * 0.105         # eye radius
+    k = _face_knobs(d)
+    eo = fw * 0.30                  # eye x-offset
+    er = fw * 0.105 * k["eye"]      # eye radius (bigger for toddlers)
     if expr in ("surprised", "excited", "curious"):
         er *= 1.2
+    ey = cy + fw * k["drop"]        # low-set eyes = tall-forehead baby schema
+    sk = k["stroke"]               # outline-weight scale (bolder for toddlers)
 
     flat_eyes = expr == "sleepy"
     happy_closed = expr == "giggling"       # ^ ^ delighted closed eyes
     for sx in (-1, 1):
-        ex, ey = cx + sx * eo, cy
+        ex = cx + sx * eo
         if flat_eyes:
-            d.arc(ex, ey, er * 1.3, 20, 160, color=ink, lw=max(fw * 0.032, 0.5))
+            d.arc(ex, ey, er * 1.3, 20, 160, color=ink, lw=max(fw * 0.032 * sk, 0.5))
         elif happy_closed:
             d.arc(ex, ey + er * 0.35, er * 1.3, 200, 340, color=ink,
-                  lw=max(fw * 0.038, 0.55))
+                  lw=max(fw * 0.038 * sk, 0.55))
         else:
             d.circle(ex, ey, er, fill=ink, force_fill=True)
             if not d.line_art:
-                d.dot(ex - er * 0.3, ey - er * 0.35, er * 0.34, WHITE)
+                d.dot(ex - er * 0.3, ey - er * 0.35, er * k["catch"], WHITE)
+                if k["sparkle"]:        # older kids: a second tiny highlight
+                    d.dot(ex + er * 0.32, ey + er * 0.30, er * 0.16, WHITE)
 
-    # eyebrows
+    # eyebrows (ride the eye line so they stay above low-set toddler eyes)
     if expr in ("sad", "worried"):
         for sx in (-1, 1):        # up-inner slant = concern
             x0 = cx + sx * (eo - er * 0.9)
             x1 = cx + sx * (eo + er * 0.9)
-            d.line(x0, cy - er * 2.1, x1, cy - er * 1.5, color=ink, lw=max(fw * 0.03, 0.45))
+            d.line(x0, ey - er * 2.1, x1, ey - er * 1.5, color=ink, lw=max(fw * 0.03 * sk, 0.45))
     elif expr in ("surprised", "excited"):
         for sx in (-1, 1):        # both brows lifted
-            d.arc(cx + sx * eo, cy - er * 2.0, er * 0.85, 200, 340,
-                  color=ink, lw=max(fw * 0.03, 0.45))
+            d.arc(cx + sx * eo, ey - er * 2.0, er * 0.85, 200, 340,
+                  color=ink, lw=max(fw * 0.03 * sk, 0.45))
     elif expr == "curious":
         # a single quizzically-raised brow on the facing side
-        d.arc(cx + facing * eo, cy - er * 2.2, er * 0.9, 200, 340,
-              color=ink, lw=max(fw * 0.03, 0.45))
+        d.arc(cx + facing * eo, ey - er * 2.2, er * 0.9, 200, 340,
+              color=ink, lw=max(fw * 0.03 * sk, 0.45))
 
-    # blush
+    # blush (rounder, fuller cheeks for the youngest band)
     if blush:
-        br = fw * 0.135 if expr in ("giggling", "excited") else fw * 0.115
+        base = fw * 0.135 if expr in ("giggling", "excited") else fw * 0.115
+        br = base * k["blush"]
         d.blush(cx - eo - fw * 0.17, cy + fw * 0.16, br)
         d.blush(cx + eo + fw * 0.17, cy + fw * 0.16, br)
 
     # mouth
     my = cy + fw * 0.24
-    mlw = max(fw * 0.035, 0.5)
+    mlw = max(fw * 0.035 * sk, 0.5)
     if expr in ("happy", "curious"):
         d.arc(cx, my - fw * 0.04, fw * 0.15, 25, 155, color=ink, lw=mlw, ry=fw * 0.13)
     elif expr == "giggling":
@@ -186,29 +225,36 @@ def _arms(
 ) -> None:
     """Tiny stick arms with hand dots.  *cy* = shoulder height, *rx* = body
     half-width at the shoulders."""
-    lw = h * 0.055
-    hand_r = h * 0.045
+    k = _arm_knobs(d)
+    lw = h * k["lw"]                # thicker, stubbier limbs for toddlers
+    hand_r = h * k["hand"]
+    rf = k["reach"]                # slightly shorter reach for the youngest
     for sx in (-1, 1):
         x0 = cx + sx * rx * 0.92
         raised = pose in ("arms_up", "jump") or (pose == "wave" and sx == facing)
         if raised:
-            x1 = cx + sx * (rx * 0.92 + h * 0.13)
+            x1 = cx + sx * (rx * 0.92 + h * 0.13 * rf)
             y1 = cy - h * 0.16
         elif pose == "point" and sx == facing:
             # one arm flung out ahead, slightly raised
-            x1 = cx + sx * (rx * 0.92 + h * 0.21)
+            x1 = cx + sx * (rx * 0.92 + h * 0.21 * rf)
             y1 = cy - h * 0.03
         elif pose == "hug":
             # both arms curl inward-forward, as if wrapping a friend
             x1 = cx + sx * rx * 0.50
             y1 = cy + h * 0.21
+        elif pose == "slump":
+            # dropped, defeated shoulders -- arms hang low and limp,
+            # tucked close to the body (pairs with a sad/worried face)
+            x1 = cx + sx * rx * 0.70
+            y1 = cy + h * 0.24
         elif pose == "walk":
             # a walking swing: facing arm forward-low, trailing arm back-low
             fwd = sx == facing
-            x1 = cx + sx * (rx * 0.92 + h * 0.11)
+            x1 = cx + sx * (rx * 0.92 + h * 0.11 * rf)
             y1 = cy + (h * 0.05 if fwd else h * 0.21)
         else:
-            x1 = cx + sx * (rx * 0.92 + h * 0.10)
+            x1 = cx + sx * (rx * 0.92 + h * 0.10 * rf)
             y1 = cy + h * 0.14
         d.line(x0, cy, x1, y1, color=color, lw=lw)
         d.dot(x1, y1, hand_r, color)
@@ -1041,16 +1087,20 @@ def draw_character(
     pose: str = "stand",
     line_art: bool = False,
     facing: int = 1,
+    age_band: str = "4-6",
 ) -> None:
     """Draw the character *key* with its feet at (x, y), *scale* mm tall.
 
     ``expression``: happy | sad | surprised | sleepy | excited | worried |
                     curious | giggling
-    ``pose``:       stand | arms_up | wave | point | hug | jump | walk
+    ``pose``:       stand | arms_up | wave | point | hug | jump | walk | slump
     ``facing``:     1 faces right, -1 faces left
     ``line_art``:   black outlines / white fills for coloring pages
+    ``age_band``:   2-4 | 4-6 | 6-8 -- tunes eye size/height, outline weight
+                    and limb thickness (Kindchenschema by age)
     """
     d = Draw(pdf, line_art=line_art)
+    d.age_band = age_band
     fn = _REGISTRY.get(key, _blob)
     # "jump" lifts the whole body off the ground; the shadow stays put and
     # shrinks a touch so the character reads as airborne.

@@ -97,6 +97,100 @@ palettes:
     tab_active: "#1A1A1A"
     tab_inactive: "#F5F5F5"
 
+  # --- BOHO lane (warm earth grounds, never pure white; earth accent) ------
+  # Hex sourced from boho_dossier §2/§9; lightest -> background, darkest ->
+  # text, terracotta/rust -> titles+tabs+motif, muted secondary -> structure.
+  terracotta_clay:
+    name: "Terracotta Clay"
+    background: "#F3EFE6"
+    primary: "#B26547"
+    secondary: "#E3C4A8"
+    accent: "#A85A3C"
+    text: "#3B2F2A"
+    text_light: "#8A7360"
+    grid_line: "#E6DACB"
+    tab_active: "#B26547"
+    tab_inactive: "#EDE4D6"
+
+  sage_linen:
+    name: "Sage Linen"
+    background: "#F6F1E8"
+    primary: "#5F7757"
+    secondary: "#C9D3BC"
+    accent: "#B56E4E"
+    text: "#2F3B35"
+    text_light: "#7C8A76"
+    grid_line: "#DCE3D2"
+    tab_active: "#5F7757"
+    tab_inactive: "#E4EADC"
+
+  dusty_adobe:
+    name: "Dusty Adobe"
+    background: "#F4EEE7"
+    primary: "#BC7269"
+    secondary: "#E7C7C0"
+    accent: "#C86B4A"
+    text: "#4A342E"
+    text_light: "#9A7A72"
+    grid_line: "#EDDACF"
+    tab_active: "#BC7269"
+    tab_inactive: "#F1E1D9"
+
+  # --- PASTEL lane (soft tonal; TEXT stays a deep ink so labels read) ------
+  # is_pastel routes labels to a darker ink mix so pale primaries never wash
+  # out the searchable text; primaries are the deep tint of each hue.
+  lavender_haze:
+    name: "Lavender Haze"
+    background: "#F6F3FB"
+    primary: "#7C64AC"
+    secondary: "#C6B7E6"
+    accent: "#7E63B0"
+    text: "#3E3850"
+    text_light: "#8E80AA"
+    grid_line: "#E7E0F3"
+    tab_active: "#7C64AC"
+    tab_inactive: "#EFEAF7"
+    is_pastel: true
+
+  mint_cream:
+    name: "Mint Cream"
+    background: "#F0F6F1"
+    primary: "#4E8A72"
+    secondary: "#B9DCC6"
+    accent: "#2F7A68"
+    text: "#24382F"
+    text_light: "#6E8A7E"
+    grid_line: "#DCEAE0"
+    tab_active: "#4E8A72"
+    tab_inactive: "#E4F0E8"
+    is_pastel: true
+
+  blush_butter:
+    name: "Blush Butter"
+    background: "#FCF6F2"
+    primary: "#C07084"
+    secondary: "#F3D4D9"
+    accent: "#D9AF44"
+    text: "#4A3A34"
+    text_light: "#9A8078"
+    grid_line: "#F0E0DC"
+    tab_active: "#C07084"
+    tab_inactive: "#F6E7E4"
+    is_pastel: true
+
+  # --- Etsy 2026 Color of the Year (Patina Blue), muted, light ground ------
+  patina_blue:
+    name: "Patina Blue"
+    background: "#EFF4F2"
+    primary: "#4E807D"
+    secondary: "#A8C4C2"
+    accent: "#C08A5A"
+    text: "#22332F"
+    text_light: "#6E8A86"
+    grid_line: "#DBE7E4"
+    tab_active: "#4E807D"
+    tab_inactive: "#E4EEEC"
+
 fonts:
   primary:
     family: "Inter"

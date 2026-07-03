@@ -223,30 +223,106 @@ class BotanicalMotif(MotifFamily):
         _branch(40, PAGE_H - 18, 14)
         _branch(PAGE_W - 40, PAGE_H - 18, -14)
 
+    # -- Boho vector vocabulary (arch / wildflower / sun) ------------------
+    # These are the earthy-botanical signatures: tall narrow nested arches
+    # (3 monochrome bands with gaps + an optional sun disc) and fine
+    # wildflower sprigs.  Line weights stay 0.8-1.4pt, flat matte fills,
+    # slightly organic.  They live on the pattern slot (covers / band
+    # panels) so the classic golden slots stay byte-for-byte unchanged.
+
+    @staticmethod
+    def _arch_points(cx: float, base_y: float, half_w: float,
+                     height: float, steps: int = 11) -> list[tuple[float, float]]:
+        """Points along a TALL NARROW half-arch (boho-rainbow geometry):
+        up the left leg, over the top, down the right leg."""
+        pts: list[tuple[float, float]] = []
+        for i in range(steps + 1):
+            ang = math.pi * (i / steps)          # pi .. 0 -> left..right
+            pts.append((cx - half_w * math.cos(ang),
+                        base_y - height * math.sin(ang)))
+        return pts
+
+    def _nested_arch(self, pdf, cx, base_y, half_w, height, scale,
+                     colors, sun=False):
+        """3 concentric arch bands, a gap between each, optional sun disc."""
+        gap = 4.6 * scale
+        lw = max(0.8, 1.25 * scale)
+        pdf.set_line_width(lw)
+        for i, col in enumerate(colors[:3]):
+            hw = half_w - i * gap
+            ht = height - i * gap
+            if hw <= 1.0 or ht <= 1.0:
+                break
+            pdf.set_draw_color(*col)
+            pdf.polyline(self._arch_points(cx, base_y, hw, ht), style="D")
+        if sun:
+            r = max(1.6, 3.2 * scale)
+            pdf.set_fill_color(*colors[-1])
+            pdf.ellipse(cx - r, base_y - height * 0.42 - r, r * 2, r * 2,
+                        style="F")
+
+    def _wildflower(self, pdf, cx, base_y, height, scale, color, petals=5):
+        """Thin stem + a simple flower head (petal ellipses round a dot)."""
+        pdf.set_draw_color(*color)
+        pdf.set_line_width(max(0.8, 1.0 * scale))
+        lean = height * 0.10
+        pdf.line(cx, base_y, cx + lean, base_y - height)
+        hx, hy = cx + lean, base_y - height
+        pr = max(1.4, 2.3 * scale)
+        pdf.set_fill_color(*color)
+        for k in range(petals):
+            a = 2 * math.pi * k / petals - math.pi / 2
+            px, py = hx + math.cos(a) * pr, hy + math.sin(a) * pr
+            pdf.ellipse(px - pr * 0.55, py - pr * 0.85, pr * 1.1, pr * 1.7,
+                        style="F")
+        # a couple of leaves on the stem
+        lh = max(1.2, 1.9 * scale)
+        for t, side in ((0.42, 1), (0.64, -1)):
+            lx, ly = cx + lean * t, base_y - height * t
+            pdf.ellipse(lx + (0 if side > 0 else -lh * 2.4), ly - lh / 2,
+                        lh * 2.4, lh, style="F")
+
     def pattern_fill(self, pdf, theme, x, y, w, h, seed, scale=1.0):
+        """Boho arch-repeat field: rows of tall narrow nested arches with
+        fine wildflower sprigs and scattered seed dots between them."""
+        rng = _rng(f"{seed}-boho-arch")
         sec = theme.rgb("secondary")
-        s = scale
-        vx = x + 22.0 * s
-        while vx < x + w:
-            pdf.set_draw_color(*sec)
-            pdf.set_line_width(0.5 * s)
-            with pdf.local_context(stroke_opacity=0.4):
-                pts = [(vx + 6 * s * math.sin(2 * math.pi * t / (60 * s)),
-                        y + t)
-                       for t in _frange(0, h, 4.0 * s)]
-                pdf.polyline(pts, style="D")
-            pdf.set_fill_color(*sec)
-            i = 0
-            ly = y + 9 * s
-            while ly < y + h - 4 * s:
-                lx = vx + 6 * s * math.sin(2 * math.pi * (ly - y) / (60 * s))
-                side = -1 if i % 2 == 0 else 1
-                with pdf.local_context(fill_opacity=0.35):
-                    pdf.ellipse(lx + (side * 7 - 3.5) * s, ly - 1.6 * s,
-                                7 * s, 3.2 * s, style="F")
-                ly += 18 * s
-                i += 1
-            vx += 44.0 * s
+        pr = theme.rgb("primary")
+        acc = theme.rgb("accent")
+        stem_c = blend(pr, theme.rgb("text"), 0.2)
+        band_cols = (sec, pr, acc)
+        mod = 60.0 * scale
+        rowh = 80.0 * scale
+        half_w = mod * 0.30
+        row = 0
+        ry = y + rowh
+        while ry <= y + h + rowh * 0.5:
+            base_y = min(ry, y + h)
+            offset = (mod / 2) if row % 2 else 0.0
+            cx = x + half_w + offset
+            col = 0
+            while cx <= x + w - half_w + 0.5:
+                self._nested_arch(pdf, cx, base_y, half_w, rowh * 0.60,
+                                  scale, band_cols, sun=(rng.random() < 0.4))
+                # motif between arches: a wildflower or a small seed cluster
+                fx = cx + mod / 2
+                if fx <= x + w - 3 * scale:
+                    if rng.random() < 0.62:
+                        self._wildflower(pdf, fx, base_y,
+                                         rowh * rng.uniform(0.34, 0.5),
+                                         scale, stem_c)
+                    else:
+                        pdf.set_fill_color(*sec)
+                        for _ in range(3):
+                            dx = rng.uniform(-6, 6) * scale
+                            dy = rng.uniform(-rowh * 0.4, -6) * scale
+                            r = 1.1 * scale
+                            pdf.ellipse(fx + dx - r, base_y + dy - r,
+                                        r * 2, r * 2, style="F")
+                cx += mod
+                col += 1
+            ry += rowh
+            row += 1
 
     def ground_field(self, pdf, theme, x, y, w, h, seed):
         """Staggered sprig/stem field rooted at the bottom edge.  Heights,

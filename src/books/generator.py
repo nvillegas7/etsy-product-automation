@@ -43,6 +43,21 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output" / "books"
 # story-text sizes per age band (pt)
 TEXT_SIZES = {"2-4": 26, "4-6": 22, "6-8": 20}
 
+# Per-age story-page staging knobs.  Toddlers get ONE big dominant hero and no
+# supporting cast (highest figure-ground read); preschoolers get the hero plus
+# a friend/mentor at the beats that call for them; early readers get a smaller
+# hero inside a richer, busier scene.  Character scale is a % of PAGE_H≈215.9mm.
+_AGE_RENDER: dict[str, dict] = {
+    #        hero   close  friend mentor  bee   cast    (show friend/mentor?)
+    "2-4": {"hero": 104, "closeup": 210, "friend": 60, "mentor": 56, "bee": 42, "cast": False},
+    "4-6": {"hero": 86,  "closeup": 200, "friend": 66, "mentor": 58, "bee": 42, "cast": True},
+    "6-8": {"hero": 76,  "closeup": 190, "friend": 62, "mentor": 54, "bee": 40, "cast": True},
+}
+
+
+def _age_render(age_band: str) -> dict:
+    return _AGE_RENDER.get(age_band, _AGE_RENDER["4-6"])
+
 _DEFAULT_PARAMS = {
     "character_theme": "forest_animals",
     "character_key": "bunny",
@@ -321,12 +336,13 @@ class BookGenerator:
     # -- layout 0: sunny top banner (hero right, friend left) ----------
 
     def _cover_sunny_banner(self, pdf, font, pal, story, seed) -> None:
+        ab = story.age_band
         draw_scene(pdf, story.setting, pal, variant=seed % 97, sparse=True,
-                   shot="establish", horizon=PAGE_H * 0.64)
+                   shot="establish", horizon=PAGE_H * 0.64, age_band=ab)
         draw_character(pdf, story.character_key, PAGE_W * 0.64, PAGE_H * 0.90, 98,
-                       expression="excited", pose="wave", facing=-1)
+                       expression="excited", pose="wave", facing=-1, age_band=ab)
         draw_character(pdf, story.friend_key, PAGE_W * 0.16, PAGE_H * 0.915, 58,
-                       expression="happy", pose="stand", facing=1)
+                       expression="happy", pose="stand", facing=1, age_band=ab)
         self._titled_panel(pdf, font, pal, story.title, PAGE_W / 2, 12, 30, PAGE_W - 44)
         self._cover_ribbon(pdf, font, pal, f"A story about {story.moral}", PAGE_W / 2, 73)
         self._bonus_seal(pdf, font, pal, PAGE_W - 30, 96, 17)
@@ -335,12 +351,13 @@ class BookGenerator:
     # -- layout 1: framed storybook (center hero on a hill, star seal) --
 
     def _cover_storybook_frame(self, pdf, font, pal, story, seed) -> None:
+        ab = story.age_band
         draw_scene(pdf, story.setting, pal, variant=seed % 97 + 11, sparse=True,
-                   shot="hill", horizon=PAGE_H * 0.66)
+                   shot="hill", horizon=PAGE_H * 0.66, age_band=ab)
         draw_character(pdf, story.character_key, PAGE_W * 0.53, PAGE_H * 0.90, 96,
-                       expression="excited", pose="arms_up", facing=1)
+                       expression="excited", pose="arms_up", facing=1, age_band=ab)
         draw_character(pdf, story.friend_key, PAGE_W * 0.21, PAGE_H * 0.915, 58,
-                       expression="happy", pose="wave", facing=1)
+                       expression="happy", pose="wave", facing=1, age_band=ab)
         d = Draw(pdf)
         d.rect(9, 9, PAGE_W - 18, PAGE_H - 18, stroke=pal.accent, lw=1.6, radius=11)
         d.rect(12.5, 12.5, PAGE_W - 25, PAGE_H - 25, stroke=pal.accent2, lw=0.7, radius=9)
@@ -354,13 +371,14 @@ class BookGenerator:
     # -- layout 2: magazine side panel (title stack left, hero right) ---
 
     def _cover_side_panel(self, pdf, font, pal, story, seed) -> None:
+        ab = story.age_band
         _, away1, _ = self._cover_zones(story)
         draw_scene(pdf, story.setting, pal, variant=seed % 97 + 23, sparse=True,
-                   shot="wide", zone=away1, time_of_day="sunset")
+                   shot="wide", zone=away1, time_of_day="sunset", age_band=ab)
         draw_character(pdf, story.friend_key, PAGE_W * 0.53, PAGE_H * 0.915, 52,
-                       expression="happy", pose="stand", facing=1)
+                       expression="happy", pose="stand", facing=1, age_band=ab)
         draw_character(pdf, story.character_key, PAGE_W * 0.77, PAGE_H * 0.90, 92,
-                       expression="excited", pose="wave", facing=-1)
+                       expression="excited", pose="wave", facing=-1, age_band=ab)
         pw = PAGE_W * 0.44
         with pdf.local_context(fill_opacity=0.90):
             pdf.set_fill_color(*lighten(pal.accent, 0.42))
@@ -386,19 +404,20 @@ class BookGenerator:
     # -- layout 3: bottom banner, hero leaping center-stage -------------
 
     def _cover_bottom_spotlight(self, pdf, font, pal, story, seed) -> None:
+        ab = story.age_band
         _, away1, _ = self._cover_zones(story)
         draw_scene(pdf, story.setting, pal, variant=seed % 97 + 37, sparse=True,
-                   shot="path", zone=away1, time_of_day="morning")
+                   shot="path", zone=away1, time_of_day="morning", age_band=ab)
         draw_character(pdf, story.friend_key, PAGE_W * 0.19, PAGE_H * 0.80, 56,
-                       expression="happy", pose="wave", facing=1)
+                       expression="happy", pose="wave", facing=1, age_band=ab)
         draw_character(pdf, story.character_key, PAGE_W * 0.50, PAGE_H * 0.74, 104,
-                       expression="excited", pose="jump", facing=1)
+                       expression="excited", pose="jump", facing=1, age_band=ab)
         if story.mentor_key == "bee":
             draw_character(pdf, story.mentor_key, PAGE_W * 0.83, PAGE_H * 0.74, 40,
-                           expression="happy", pose="stand", facing=-1)
+                           expression="happy", pose="stand", facing=-1, age_band=ab)
         else:
             draw_character(pdf, story.mentor_key, PAGE_W * 0.83, PAGE_H * 0.80, 54,
-                           expression="happy", pose="stand", facing=-1)
+                           expression="happy", pose="stand", facing=-1, age_band=ab)
         ph = self._title_panel_h(pdf, font, story.title, 26, PAGE_W - 52)
         top = PAGE_H - ph - 11
         self._cover_ribbon(pdf, font, pal, f"A story about {story.moral}",
@@ -410,13 +429,14 @@ class BookGenerator:
     # -- layout 4: matted postcard (thick colored frame holds the type) -
 
     def _cover_matted_postcard(self, pdf, font, pal, story, seed) -> None:
+        ab = story.age_band
         home, _, _ = self._cover_zones(story)
         draw_scene(pdf, story.setting, pal, variant=seed % 97 + 53, sparse=True,
-                   shot="corner", zone=home, horizon=PAGE_H * 0.62)
+                   shot="corner", zone=home, horizon=PAGE_H * 0.62, age_band=ab)
         draw_character(pdf, story.character_key, PAGE_W * 0.60, PAGE_H * 0.80, 88,
-                       expression="happy", pose="wave", facing=-1)
+                       expression="happy", pose="wave", facing=-1, age_band=ab)
         draw_character(pdf, story.friend_key, PAGE_W * 0.31, PAGE_H * 0.82, 56,
-                       expression="excited", pose="stand", facing=1)
+                       expression="excited", pose="stand", facing=1, age_band=ab)
         mat = lighten(pal.accent2, 0.34)
         top_h, bot_h, side = 50, 34, 13
         pdf.set_fill_color(*mat)
@@ -446,7 +466,7 @@ class BookGenerator:
         self._center_text(pdf, font, story.subtitle, y + 4, 14, pal.text)
 
         draw_character(pdf, story.character_key, PAGE_W / 2, 142, 62,
-                       expression="happy", pose="stand", facing=1)
+                       expression="happy", pose="stand", facing=1, age_band=story.age_band)
 
         self._center_text(pdf, font, "~ written for little dreamers ~", 158, 12, pal.text)
         self._center_text(pdf, font, "This book belongs to", 178, 15, darken(pal.text, 0.1), "B")
@@ -463,50 +483,64 @@ class BookGenerator:
         text_size: float,
     ) -> None:
         pdf.add_page()
+        age_band = story.age_band
+        knobs = _age_render(age_band)
         variant = int(story.context.get("seed", 0) or 0) + index * 13 + 5
         panel_on_top = page.composition in ("center", "closeup")
         # Camera framing + sub-location travel per beat: page.shot sets the
         # horizon and foreground weight, page.zone walks the book through 2-3
         # related spots of one world (barn -> field -> pond) so no two spreads
         # look alike.  Close-ups get a lighter background so the big character
-        # reads; wide/vista beats keep the full depth stack.
+        # reads; wide/vista beats keep the full depth stack.  age_band tunes
+        # the scene density (sparse & clutter-free for 2-4, seek-and-find for 6-8).
         draw_scene(pdf, story.setting, pal, time_of_day=page.time_of_day,
                    variant=variant, shot=page.shot, zone=page.zone,
                    background_cast=page.composition != "closeup",
-                   sky_offset=52.0 if panel_on_top else 0.0)
+                   sky_offset=52.0 if panel_on_top else 0.0,
+                   age_band=age_band)
+
+        # Toddler books stay on ONE dominant hero -- the supporting cast is
+        # suppressed so figure-ground contrast is maximal (dossier: 2-4 = a
+        # single subject, near-empty background).
+        show_friend = page.show_friend and knobs["cast"]
+        show_mentor = page.show_mentor and knobs["cast"]
 
         # -- characters ------------------------------------------------
         if page.composition == "closeup":
-            draw_character(pdf, story.character_key, PAGE_W / 2, 232, 200,
-                           expression=page.expression, pose=page.pose, facing=1)
+            draw_character(pdf, story.character_key, PAGE_W / 2, 232, knobs["closeup"],
+                           expression=page.expression, pose=page.pose, facing=1,
+                           age_band=age_band)
         else:
             stand_y = PAGE_H * 0.72 if not panel_on_top else PAGE_H * 0.88
             positions = {"left": (PAGE_W * 0.30, 1), "right": (PAGE_W * 0.70, -1),
                          "center": (PAGE_W * 0.50, 1)}
             cx, facing = positions.get(page.composition, (PAGE_W * 0.5, 1))
 
-            others = int(page.show_friend) + int(page.show_mentor)
+            others = int(show_friend) + int(show_mentor)
             if others and page.composition == "center":
                 cx = PAGE_W * (0.38 if others == 1 else 0.50)
 
-            draw_character(pdf, story.character_key, cx, stand_y, 84,
-                           expression=page.expression, pose=page.pose, facing=facing)
+            draw_character(pdf, story.character_key, cx, stand_y, knobs["hero"],
+                           expression=page.expression, pose=page.pose, facing=facing,
+                           age_band=age_band)
 
             side = -1 if cx > PAGE_W / 2 else 1
             slot_x = cx + side * PAGE_W * 0.30
-            if page.show_friend:
-                draw_character(pdf, story.friend_key, slot_x, stand_y, 66,
+            if show_friend:
+                draw_character(pdf, story.friend_key, slot_x, stand_y, knobs["friend"],
                                expression=page.friend_expression, pose="stand",
-                               facing=-side)
-                slot_x = cx - side * PAGE_W * 0.26 if page.show_mentor else slot_x
-            if page.show_mentor:
-                mx = slot_x if not page.show_friend else cx - side * PAGE_W * 0.26
+                               facing=-side, age_band=age_band)
+                slot_x = cx - side * PAGE_W * 0.26 if show_mentor else slot_x
+            if show_mentor:
+                mx = slot_x if not show_friend else cx - side * PAGE_W * 0.26
                 if story.mentor_key == "bee":
-                    draw_character(pdf, story.mentor_key, mx, stand_y - 26, 42,
-                                   expression="happy", pose="stand", facing=-side)
+                    draw_character(pdf, story.mentor_key, mx, stand_y - 26, knobs["bee"],
+                                   expression="happy", pose="stand", facing=-side,
+                                   age_band=age_band)
                 else:
-                    draw_character(pdf, story.mentor_key, mx, stand_y, 58,
-                                   expression="happy", pose="stand", facing=-side)
+                    draw_character(pdf, story.mentor_key, mx, stand_y, knobs["mentor"],
+                                   expression="happy", pose="stand", facing=-side,
+                                   age_band=age_band)
 
         # -- text panel --------------------------------------------------
         panel_w = PAGE_W - 32
@@ -556,7 +590,7 @@ class BookGenerator:
                           max_w=PAGE_W - 66)
 
         draw_character(pdf, story.character_key, PAGE_W / 2, 182, 58,
-                       expression="happy", pose="arms_up", facing=1)
+                       expression="happy", pose="arms_up", facing=1, age_band=story.age_band)
         self._center_text(pdf, font, f"~ {story.character_full_name} ~", 196, 12, pal.text)
 
     def _render_coloring_page(
@@ -568,23 +602,24 @@ class BookGenerator:
         pdf.rect(0, 0, PAGE_W, PAGE_H, style="F")
 
         pal = get_book_palette("sunny_day")  # colors unused in line-art mode
+        ab = story.age_band
         draw_scene(pdf, story.setting, pal, line_art=True, variant=index * 31 + 3,
-                   horizon=PAGE_H * 0.60)
+                   horizon=PAGE_H * 0.60, age_band=ab)
         if with_friend:
             draw_character(pdf, story.character_key, PAGE_W * 0.36, PAGE_H * 0.78, 86,
-                           expression="happy", pose=pose, line_art=True, facing=1)
+                           expression="happy", pose=pose, line_art=True, facing=1, age_band=ab)
             draw_character(pdf, story.friend_key, PAGE_W * 0.68, PAGE_H * 0.78, 70,
-                           expression="happy", pose="stand", line_art=True, facing=-1)
+                           expression="happy", pose="stand", line_art=True, facing=-1, age_band=ab)
         elif with_mentor:
             draw_character(pdf, story.character_key, PAGE_W * 0.36, PAGE_H * 0.78, 86,
-                           expression="happy", pose=pose, line_art=True, facing=1)
+                           expression="happy", pose=pose, line_art=True, facing=1, age_band=ab)
             y_off = 26 if story.mentor_key == "bee" else 0
             draw_character(pdf, story.mentor_key, PAGE_W * 0.68, PAGE_H * 0.78 - y_off,
                            50 if story.mentor_key == "bee" else 64,
-                           expression="happy", pose="stand", line_art=True, facing=-1)
+                           expression="happy", pose="stand", line_art=True, facing=-1, age_band=ab)
         else:
             draw_character(pdf, story.character_key, PAGE_W * 0.5, PAGE_H * 0.80, 96,
-                           expression="happy", pose=pose, line_art=True, facing=1)
+                           expression="happy", pose=pose, line_art=True, facing=1, age_band=ab)
 
         # mask overflow + frame + header
         pdf.set_fill_color(255, 255, 255)
@@ -619,7 +654,7 @@ class BookGenerator:
         self._center_text(pdf, font, "Thank you for reading!", 102, 15, pal.text)
 
         draw_character(pdf, story.character_key, PAGE_W / 2, PAGE_H * 0.845, 74,
-                       expression="happy", pose="wave", facing=1)
+                       expression="happy", pose="wave", facing=1, age_band=story.age_band)
         self._center_text(
             pdf, font,
             f"Come back soon and visit {story.character_name} again.",
