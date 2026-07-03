@@ -306,6 +306,39 @@ COLORS: dict[str, dict[str, RGB]] = {
                    "wing": (236, 240, 250)},
     "snail":      {"body": (232, 196, 168), "shell": (232, 156, 96), "shell2": (250, 206, 150),
                    "horn": (150, 110, 86)},
+    # -- arctic --
+    "penguin":    {"body": (72, 84, 108), "belly": (250, 250, 252), "beak": (247, 158, 66),
+                   "foot": (245, 150, 66)},
+    "seal":       {"body": (156, 166, 184), "belly": (226, 231, 239), "flipper": (128, 138, 158),
+                   "nose": (72, 66, 78)},
+    "polar_bear": {"body": (247, 248, 251), "muzzle": (228, 233, 242), "nose": (78, 72, 84)},
+    # -- jungle / savanna --
+    "elephant":   {"body": (176, 174, 200), "ear": (192, 190, 214), "belly": (208, 206, 226),
+                   "tusk": (250, 246, 236)},
+    "lion":       {"body": (246, 192, 118), "mane": (224, 150, 74), "muzzle": (251, 234, 202),
+                   "ear": (240, 210, 168)},
+    "monkey":     {"body": (168, 122, 84), "face": (238, 206, 166), "ear": (238, 206, 166),
+                   "belly": (240, 210, 172)},
+    # -- pond friends --
+    "frog":       {"body": (140, 200, 110), "belly": (216, 236, 172), "spot": (104, 168, 82),
+                   "foot": (118, 178, 92)},
+    "duck":       {"body": (249, 249, 251), "wing": (232, 234, 240), "beak": (245, 168, 72),
+                   "foot": (245, 150, 66)},
+    # -- cozy / woodland --
+    "panda":      {"body": (250, 250, 250), "patch": (60, 56, 66), "muzzle": (244, 244, 246)},
+    "koala":      {"body": (172, 178, 188), "belly": (224, 228, 236), "ear": (196, 202, 212),
+                   "nose": (84, 78, 90)},
+    "deer":       {"body": (198, 148, 102), "belly": (240, 224, 200), "spot": (245, 234, 214),
+                   "antler": (172, 134, 94), "ear": (216, 178, 138), "nose": (86, 70, 74)},
+    "raccoon":    {"body": (152, 160, 172), "belly": (226, 230, 238), "mask": (66, 62, 74),
+                   "ear": (176, 182, 194), "tail": (108, 114, 128)},
+    # -- mythical --
+    "unicorn":    {"body": (250, 244, 250), "mane": (250, 178, 206), "horn": (255, 214, 120),
+                   "hoof": (222, 204, 234), "muzzle": (250, 236, 242)},
+    "dragon":     {"body": (150, 206, 150), "belly": (232, 240, 196), "wing": (200, 168, 218),
+                   "spike": (110, 172, 112), "horn": (240, 224, 180)},
+    "dino":       {"body": (150, 196, 224), "belly": (224, 238, 198), "plate": (118, 168, 204),
+                   "cheek": (250, 196, 150)},
 }
 
 
@@ -1026,6 +1059,437 @@ def _snail(d, x, y, h, expr, pose, facing):
     _face(d, hx + facing * h * 0.01, y - h * 0.45, h * 0.24, expr, facing)
 
 
+# ---------------------------------------------------------------------------
+# Extended kawaii cast: arctic, jungle, pond, cozy/woodland, mythical
+# ---------------------------------------------------------------------------
+# A faint outline keeps pale/white species readable on light backgrounds
+# (snow, sky) in full colour; line-art mode overrides it with a black stroke.
+_PALE = (214, 216, 224)
+
+
+def _pale_stroke(d: "Draw", c: RGB | None = None) -> RGB | None:
+    return None if d.line_art else (c or _PALE)
+
+
+def _eye_whites(d: Draw, cx: float, cy: float, fw: float) -> None:
+    """White backing discs under the eyes so pupils read on a dark patch."""
+    eo = fw * 0.30
+    for sx in (-1, 1):
+        d.circle(cx + sx * eo, cy, fw * 0.17,
+                 fill=WHITE if not d.line_art else None,
+                 stroke=(30, 30, 30) if d.line_art else None, lw=0.5)
+
+
+def _penguin(d, x, y, h, expr, pose, facing):
+    c = COLORS["penguin"]
+    rx, ry = h * 0.31, h * 0.43
+    cy = y - ry - h * 0.03
+    _feet(d, x, y, h, c["foot"], spread=0.13)
+    d.ellipse(x, cy, rx, ry, fill=c["body"])
+    # white belly / face panel
+    d.ellipse(x, cy + ry * 0.10, rx * 0.70, ry * 0.82, fill=c["belly"])
+    # flippers
+    for sx in (-1, 1):
+        d.ellipse(x + sx * rx * 0.99, cy + ry * 0.08, h * 0.075, h * 0.21, fill=c["body"])
+    fcy = cy - ry * 0.24
+    _face(d, x + facing * h * 0.01, fcy, h * 0.40, expr, facing)
+    d.polygon([(x - h * 0.05, fcy + h * 0.085), (x + h * 0.05, fcy + h * 0.085),
+               (x, fcy + h * 0.17)], fill=c["beak"])
+
+
+def _seal(d, x, y, h, expr, pose, facing):
+    c = COLORS["seal"]
+    rx, ry = h * 0.35, h * 0.40
+    cy = y - ry - h * 0.01
+    # tail flippers spreading at the ground
+    for sx in (-1, 1):
+        d.polygon([(x + sx * rx * 0.15, y - h * 0.12),
+                   (x + sx * rx * 0.95, y - h * 0.005),
+                   (x + sx * rx * 0.30, y - h * 0.16)], fill=c["flipper"])
+    d.ellipse(x, cy, rx, ry, fill=c["body"])
+    d.ellipse(x, cy + ry * 0.24, rx * 0.62, ry * 0.58, fill=c["belly"])
+    # front flippers
+    for sx in (-1, 1):
+        d.ellipse(x + sx * rx * 0.84, cy + ry * 0.30, h * 0.11, h * 0.06,
+                  fill=c["flipper"])
+    fcy = cy - ry * 0.06
+    _face(d, x + facing * h * 0.01, fcy, h * 0.44, expr, facing)
+    d.dot(x + facing * h * 0.01, fcy + h * 0.44 * 0.20, h * 0.03, c["nose"])
+    for sx in (-1, 1):
+        d.line(x + sx * h * 0.05, fcy + h * 0.10, x + sx * h * 0.17, fcy + h * 0.08,
+               color=darken(c["body"], 0.28), lw=h * 0.012)
+
+
+def _polar_bear(d, x, y, h, expr, pose, facing):
+    c = COLORS["polar_bear"]
+    hr = h * 0.31
+    hcy = y - h * 0.58
+    for sx in (-1, 1):
+        d.circle(x + sx * hr * 0.74, hcy - hr * 0.74, hr * 0.28, fill=c["body"],
+                 stroke=_pale_stroke(d), lw=0.4)
+    bry = h * 0.33
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.30, bry, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    _feet(d, x, y, h, (224, 228, 238), spread=0.16)
+    _arms(d, x, bcy - h * 0.02, h * 0.28, h, pose, (220, 224, 234), facing)
+    d.circle(x, hcy, hr, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    d.ellipse(x, hcy + hr * 0.44, hr * 0.50, hr * 0.36, fill=c["muzzle"])
+    _face(d, x + facing * h * 0.012, hcy + hr * 0.04, h * 0.42, expr, facing)
+    d.dot(x + facing * h * 0.012, hcy + hr * 0.32, h * 0.03, c["nose"])
+
+
+def _elephant(d, x, y, h, expr, pose, facing):
+    c = COLORS["elephant"]
+    hr = h * 0.30
+    hcy = y - h * 0.55
+    # big flappy ears behind the head
+    for sx in (-1, 1):
+        d.ellipse(x + sx * hr * 1.02, hcy + hr * 0.08, hr * 0.56, hr * 0.68, fill=c["ear"])
+    bry = h * 0.32
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.30, bry, fill=c["body"])
+    d.ellipse(x, bcy + h * 0.08, h * 0.18, h * 0.18, fill=c["belly"])
+    _feet(d, x, y, h, darken(c["body"], 0.14), spread=0.17)
+    _arms(d, x, bcy - h * 0.02, h * 0.28, h, pose, darken(c["body"], 0.12), facing)
+    d.circle(x, hcy, hr, fill=c["body"])
+    _face(d, x + facing * h * 0.015, hcy - hr * 0.08, h * 0.40, expr, facing)
+    # trunk hanging down between the eyes, curling toward the facing side
+    tx = x + facing * h * 0.015
+    ty = hcy + hr * 0.22
+    d.rect(tx - h * 0.05, ty, h * 0.10, h * 0.20, fill=c["body"], radius=h * 0.045)
+    d.circle(tx + facing * h * 0.02, ty + h * 0.21, h * 0.052, fill=c["body"])
+    d.circle(tx + facing * h * 0.055, ty + h * 0.235, h * 0.044, fill=c["body"])
+    # short curved tusks tucked at the trunk base, tips turning outward
+    for sx in (-1, 1):
+        d.polygon([(tx + sx * h * 0.055, ty + h * 0.05),
+                   (tx + sx * h * 0.10, ty + h * 0.115),
+                   (tx + sx * h * 0.115, ty + h * 0.085),
+                   (tx + sx * h * 0.075, ty + h * 0.035)], fill=c["tusk"])
+
+
+def _lion(d, x, y, h, expr, pose, facing):
+    c = COLORS["lion"]
+    hr = h * 0.24
+    hcy = y - h * 0.54
+    # tail with a tuft
+    d.arc(x - facing * h * 0.28, y - h * 0.24, h * 0.14, 90 if facing > 0 else 0,
+          200 if facing > 0 else 90, color=c["body"], lw=h * 0.05)
+    d.dot(x - facing * h * 0.40, y - h * 0.20, h * 0.05, c["mane"])
+    bry = h * 0.30
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.26, bry, fill=c["body"])
+    d.ellipse(x, bcy + h * 0.06, h * 0.15, h * 0.18, fill=c["muzzle"])
+    _feet(d, x, y, h, darken(c["body"], 0.2), spread=0.15)
+    _arms(d, x, bcy - h * 0.02, h * 0.24, h, pose, darken(c["body"], 0.14), facing)
+    # ears
+    for sx in (-1, 1):
+        d.circle(x + sx * hr * 0.7, hcy - hr * 0.5, hr * 0.24, fill=c["ear"])
+    # shaggy mane ring
+    for i in range(12):
+        a = math.radians(i * 360 / 12)
+        d.circle(x + hr * 1.06 * math.cos(a), hcy + hr * 1.06 * math.sin(a),
+                 hr * 0.34, fill=c["mane"])
+    d.circle(x, hcy, hr, fill=c["body"])
+    d.ellipse(x, hcy + hr * 0.42, hr * 0.60, hr * 0.44, fill=c["muzzle"])
+    _face(d, x + facing * h * 0.012, hcy + hr * 0.06, h * 0.40, expr, facing)
+    d.dot(x + facing * h * 0.012, hcy + hr * 0.36, h * 0.026, (120, 80, 70))
+
+
+def _monkey(d, x, y, h, expr, pose, facing):
+    c = COLORS["monkey"]
+    hr = h * 0.28
+    hcy = y - h * 0.55
+    # curling tail
+    d.arc(x - facing * h * 0.24, y - h * 0.24, h * 0.16, 60 if facing > 0 else 60,
+          260 if facing > 0 else 260, color=c["body"], lw=h * 0.045)
+    # big round side ears
+    for sx in (-1, 1):
+        d.circle(x + sx * hr * 1.02, hcy + hr * 0.05, hr * 0.34, fill=c["body"])
+        d.circle(x + sx * hr * 1.02, hcy + hr * 0.05, hr * 0.19, fill=c["ear"])
+    bry = h * 0.30
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.25, bry, fill=c["body"])
+    d.ellipse(x, bcy + h * 0.07, h * 0.15, h * 0.18, fill=c["belly"])
+    _feet(d, x, y, h, darken(c["body"], 0.2), spread=0.14)
+    _arms(d, x, bcy - h * 0.02, h * 0.24, h, pose, darken(c["body"], 0.14), facing)
+    d.circle(x, hcy, hr, fill=c["body"])
+    # tan face patch (heart shape from two lobes + a chin)
+    d.ellipse(x, hcy + hr * 0.16, hr * 0.72, hr * 0.66, fill=c["face"])
+    d.circle(x - hr * 0.30, hcy - hr * 0.06, hr * 0.30, fill=c["face"])
+    d.circle(x + hr * 0.30, hcy - hr * 0.06, hr * 0.30, fill=c["face"])
+    _face(d, x + facing * h * 0.012, hcy + hr * 0.14, h * 0.40, expr, facing)
+    d.dot(x + facing * h * 0.012, hcy + hr * 0.40, h * 0.02, (120, 82, 60))
+
+
+def _frog(d, x, y, h, expr, pose, facing):
+    c = COLORS["frog"]
+    rx, ry = h * 0.42, h * 0.33
+    cy = y - ry - h * 0.06
+    # splayed back feet
+    for sx in (-1, 1):
+        d.ellipse(x + sx * rx * 0.72, y - h * 0.03, h * 0.12, h * 0.06, fill=c["foot"])
+    _arms(d, x, cy + ry * 0.28, rx * 0.96, h, pose, c["foot"], facing)
+    d.ellipse(x, cy, rx, ry, fill=c["body"])
+    d.ellipse(x, cy + ry * 0.30, rx * 0.66, ry * 0.58, fill=c["belly"])
+    # eye bumps riding on top of the head
+    for sx in (-1, 1):
+        ex, ey = x + sx * rx * 0.44, cy - ry * 0.80
+        d.circle(ex, ey, h * 0.115, fill=c["body"])
+        d.circle(ex, ey, h * 0.066, fill=WHITE if not d.line_art else None,
+                 stroke=(30, 30, 30) if d.line_art else None, lw=0.5)
+        d.circle(ex, ey + h * 0.006, h * 0.033, fill=INK, force_fill=True)
+        if not d.line_art:
+            d.dot(ex - h * 0.018, ey - h * 0.020, h * 0.016, WHITE)
+    # wide happy mouth across the body
+    my = cy - h * 0.02
+    if expr in ("sad", "worried"):
+        d.arc(x, my + h * 0.10, rx * 0.40, 200, 340, color=INK, lw=h * 0.03, ry=ry * 0.32)
+    else:
+        d.arc(x, my - h * 0.02, rx * 0.42, 18, 162, color=INK, lw=h * 0.032, ry=ry * 0.42)
+    d.dot(x - rx * 0.16, cy - ry * 0.36, h * 0.016, darken(c["body"], 0.25))
+    d.dot(x + rx * 0.16, cy - ry * 0.36, h * 0.016, darken(c["body"], 0.25))
+    if not d.line_art:
+        d.blush(x - rx * 0.5, cy + ry * 0.02, h * 0.06)
+        d.blush(x + rx * 0.5, cy + ry * 0.02, h * 0.06)
+
+
+def _duck(d, x, y, h, expr, pose, facing):
+    c = COLORS["duck"]
+    rx, ry = h * 0.35, h * 0.41
+    cy = y - ry - h * 0.05
+    # rounded tail lifting at the back
+    d.ellipse(x - facing * rx * 0.92, cy + ry * 0.34, h * 0.12, h * 0.085,
+              fill=c["wing"], stroke=_pale_stroke(d), lw=0.4)
+    _feet(d, x, y, h, c["foot"], spread=0.13)
+    d.ellipse(x, cy, rx, ry, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    # tucked wing
+    d.ellipse(x - facing * rx * 0.52, cy + ry * 0.16, h * 0.13, h * 0.22,
+              fill=c["wing"], stroke=_pale_stroke(d), lw=0.4)
+    # little head-feather sprig
+    for ang in (-108, -90, -72):
+        _leaf(d, x, cy - ry * 0.94, h * 0.10, h * 0.028, ang, c["wing"])
+    _face(d, x + facing * h * 0.02, cy - ry * 0.24, h * 0.40, expr, facing)
+    # broad rounded bill centred just below the eyes
+    d.ellipse(x + facing * h * 0.02, cy - ry * 0.02, h * 0.165, h * 0.075, fill=c["beak"])
+    d.line(x - h * 0.11 + facing * h * 0.02, cy - ry * 0.02,
+           x + h * 0.11 + facing * h * 0.02, cy - ry * 0.02,
+           color=darken(c["beak"], 0.28), lw=h * 0.014)
+    d.dot(x + facing * h * 0.02 - h * 0.05, cy - ry * 0.055, h * 0.012, darken(c["beak"], 0.3))
+    d.dot(x + facing * h * 0.02 + h * 0.05, cy - ry * 0.055, h * 0.012, darken(c["beak"], 0.3))
+
+
+def _panda(d, x, y, h, expr, pose, facing):
+    c = COLORS["panda"]
+    hr = h * 0.31
+    hcy = y - h * 0.57
+    for sx in (-1, 1):
+        d.circle(x + sx * hr * 0.72, hcy - hr * 0.72, hr * 0.28, fill=c["patch"])
+    bry = h * 0.32
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.30, bry, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    _feet(d, x, y, h, c["patch"], spread=0.16)
+    _arms(d, x, bcy - h * 0.02, h * 0.28, h, pose, c["patch"], facing)
+    d.circle(x, hcy, hr, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    fcy = hcy + hr * 0.06
+    fw = h * 0.42
+    eo = fw * 0.30
+    # slanted black eye patches, white eye backing, then the shared face
+    for sx in (-1, 1):
+        d.ellipse(x + sx * eo, fcy + h * 0.004, hr * 0.30, hr * 0.36, fill=c["patch"])
+    _eye_whites(d, x, fcy, fw)
+    _face(d, x, fcy, fw, expr, facing)
+    d.dot(x, fcy + fw * 0.20, h * 0.026, c["patch"])
+
+
+def _koala(d, x, y, h, expr, pose, facing):
+    c = COLORS["koala"]
+    hr = h * 0.30
+    hcy = y - h * 0.55
+    # big fluffy side ears
+    for sx in (-1, 1):
+        d.circle(x + sx * hr * 0.94, hcy - hr * 0.10, hr * 0.42, fill=c["body"],
+                 stroke=_pale_stroke(d), lw=0.4)
+        d.circle(x + sx * hr * 0.94, hcy - hr * 0.10, hr * 0.24, fill=c["ear"])
+    bry = h * 0.32
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.28, bry, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    d.ellipse(x, bcy + h * 0.08, h * 0.16, h * 0.17, fill=c["belly"])
+    _feet(d, x, y, h, darken(c["body"], 0.18), spread=0.15)
+    _arms(d, x, bcy - h * 0.02, h * 0.26, h, pose, darken(c["body"], 0.14), facing)
+    d.circle(x, hcy, hr, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    _face(d, x + facing * h * 0.012, hcy - hr * 0.02, h * 0.40, expr, facing)
+    # big spoon-shaped nose
+    d.ellipse(x, hcy + hr * 0.28, hr * 0.26, hr * 0.34, fill=c["nose"])
+
+
+def _deer(d, x, y, h, expr, pose, facing):
+    c = COLORS["deer"]
+    hr = h * 0.26
+    hcy = y - h * 0.56
+    # branching antlers
+    for sx in (-1, 1):
+        bx, by = x + sx * hr * 0.5, hcy - hr * 0.72
+        tip = (bx + sx * h * 0.06, by - h * 0.20)
+        d.line(bx, by, *tip, color=c["antler"], lw=h * 0.032)
+        d.line(bx + sx * h * 0.02, by - h * 0.07, bx + sx * h * 0.13, by - h * 0.10,
+               color=c["antler"], lw=h * 0.026)
+        d.line(bx + sx * h * 0.045, by - h * 0.14, bx + sx * h * 0.14, by - h * 0.16,
+               color=c["antler"], lw=h * 0.024)
+        d.dot(*tip, h * 0.02, c["antler"])
+    # ears
+    for sx in (-1, 1):
+        d.ellipse(x + sx * hr * 0.86, hcy - hr * 0.18, h * 0.055, h * 0.11, fill=c["ear"])
+    bry = h * 0.30
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.25, bry, fill=c["body"])
+    d.ellipse(x, bcy + h * 0.07, h * 0.15, h * 0.18, fill=c["belly"])
+    if not d.line_art:
+        for sx, sy in ((-0.4, -0.1), (0.4, -0.1), (0.0, 0.18)):
+            d.dot(x + sx * h * 0.2, bcy + sy * h, h * 0.02, c["spot"])
+    _feet(d, x, y, h, darken(c["body"], 0.2), spread=0.14)
+    _arms(d, x, bcy - h * 0.02, h * 0.23, h, pose, darken(c["body"], 0.14), facing)
+    d.circle(x, hcy, hr, fill=c["body"])
+    d.ellipse(x, hcy + hr * 0.44, hr * 0.5, hr * 0.36, fill=c["belly"])
+    _face(d, x + facing * h * 0.012, hcy + hr * 0.06, h * 0.40, expr, facing)
+    d.dot(x + facing * h * 0.012, hcy + hr * 0.36, h * 0.026, c["nose"])
+
+
+def _raccoon(d, x, y, h, expr, pose, facing):
+    c = COLORS["raccoon"]
+    hr = h * 0.28
+    hcy = y - h * 0.55
+    # ringed tail curling behind the body
+    tail_base_x = x - facing * h * 0.20
+    tail_ang = 120 if facing > 0 else 60
+    _leaf(d, tail_base_x, y - h * 0.12, h * 0.54, h * 0.20, tail_ang, c["tail"])
+    for frac, col in ((0.72, c["belly"]), (0.48, c["tail"]), (0.26, c["belly"])):
+        a = math.radians(tail_ang)
+        d.circle(tail_base_x + frac * h * 0.54 * math.cos(a),
+                 (y - h * 0.12) + frac * h * 0.54 * math.sin(a), h * 0.06, fill=col)
+    # ears
+    for sx in (-1, 1):
+        ex = x + sx * hr * 0.66
+        d.polygon([(ex - hr * 0.28, hcy - hr * 0.5), (ex, hcy - hr * 1.12),
+                   (ex + hr * 0.28, hcy - hr * 0.5)], fill=c["body"])
+        d.polygon([(ex - hr * 0.13, hcy - hr * 0.58), (ex, hcy - hr * 0.96),
+                   (ex + hr * 0.13, hcy - hr * 0.58)], fill=c["ear"])
+    bry = h * 0.30
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.26, bry, fill=c["body"])
+    d.ellipse(x, bcy + h * 0.07, h * 0.16, h * 0.18, fill=c["belly"])
+    _feet(d, x, y, h, darken(c["body"], 0.22), spread=0.14)
+    _arms(d, x, bcy - h * 0.02, h * 0.24, h, pose, darken(c["body"], 0.16), facing)
+    d.circle(x, hcy, hr, fill=c["body"])
+    fcy = hcy + hr * 0.08
+    fw = h * 0.40
+    eo = fw * 0.30
+    # black bandit mask across both eyes
+    for sx in (-1, 1):
+        d.ellipse(x + sx * eo, fcy, hr * 0.30, hr * 0.34, fill=c["mask"])
+    d.rect(x - eo, fcy - hr * 0.1, eo * 2, hr * 0.22, fill=c["mask"])
+    d.ellipse(x, hcy + hr * 0.44, hr * 0.5, hr * 0.34, fill=c["belly"])
+    _eye_whites(d, x, fcy, fw)
+    _face(d, x, fcy, fw, expr, facing)
+    d.dot(x, fcy + fw * 0.22, h * 0.024, c["mask"])
+
+
+def _unicorn(d, x, y, h, expr, pose, facing):
+    c = COLORS["unicorn"]
+    hr = h * 0.27
+    hcy = y - h * 0.55
+    # golden horn
+    d.polygon([(x - h * 0.032, hcy - hr * 0.82), (x, hcy - hr * 1.55),
+               (x + h * 0.032, hcy - hr * 0.82)], fill=c["horn"])
+    # ears
+    for sx in (-1, 1):
+        ex = x + sx * hr * 0.62
+        d.polygon([(ex - hr * 0.18, hcy - hr * 0.55), (ex, hcy - hr * 1.02),
+                   (ex + hr * 0.18, hcy - hr * 0.55)], fill=c["body"])
+    # flowing mane down the back side of the head
+    for i, rr in enumerate((0.26, 0.22, 0.18, 0.15)):
+        d.circle(x - facing * hr * (0.62 + i * 0.18), hcy - hr * (0.35 - i * 0.28),
+                 hr * rr, fill=c["mane"])
+    bry = h * 0.30
+    bcy = y - bry + h * 0.02
+    d.ellipse(x, bcy, h * 0.25, bry, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    # tail
+    for i, rr in enumerate((0.16, 0.14, 0.12)):
+        d.circle(x - facing * (h * 0.24 + i * h * 0.06), y - h * 0.22 + i * h * 0.06,
+                 h * rr, fill=c["mane"])
+    _feet(d, x, y, h, c["hoof"], spread=0.14)
+    _arms(d, x, bcy - h * 0.02, h * 0.23, h, pose, darken(c["body"], 0.08), facing)
+    d.circle(x, hcy, hr, fill=c["body"], stroke=_pale_stroke(d), lw=0.4)
+    # forelock tuft between the ears
+    d.circle(x + facing * hr * 0.28, hcy - hr * 0.55, hr * 0.22, fill=c["mane"])
+    d.ellipse(x, hcy + hr * 0.44, hr * 0.5, hr * 0.34, fill=c["muzzle"])
+    _face(d, x + facing * h * 0.012, hcy + hr * 0.06, h * 0.40, expr, facing)
+    d.dot(x + facing * h * 0.012, hcy + hr * 0.38, h * 0.022, (196, 150, 176))
+
+
+def _dragon(d, x, y, h, expr, pose, facing):
+    c = COLORS["dragon"]
+    hr = h * 0.27
+    hcy = y - h * 0.55
+    bry = h * 0.31
+    bcy = y - bry + h * 0.02
+    # wings behind the body
+    for sx in (-1, 1):
+        d.polygon([(x + sx * h * 0.14, bcy - h * 0.06),
+                   (x + sx * h * 0.40, bcy - h * 0.22),
+                   (x + sx * h * 0.36, bcy + h * 0.04),
+                   (x + sx * h * 0.42, bcy + h * 0.02),
+                   (x + sx * h * 0.30, bcy + h * 0.14)], fill=c["wing"])
+    # curling tail with an arrow tip
+    d.arc(x - facing * h * 0.26, y - h * 0.22, h * 0.14, 90 if facing > 0 else 0,
+          210 if facing > 0 else 90, color=c["body"], lw=h * 0.05)
+    d.polygon([(x - facing * h * 0.40, y - h * 0.16),
+               (x - facing * h * 0.52, y - h * 0.10),
+               (x - facing * h * 0.40, y - h * 0.24)], fill=c["spike"])
+    # back spikes
+    for sx in (-1, 1):
+        d.polygon([(x + sx * h * 0.05, bcy - bry * 0.7),
+                   (x + sx * h * 0.11, bcy - bry * 1.02),
+                   (x + sx * h * 0.15, bcy - bry * 0.6)], fill=c["spike"])
+    d.ellipse(x, bcy, h * 0.26, bry, fill=c["body"])
+    d.ellipse(x, bcy + h * 0.07, h * 0.16, h * 0.18, fill=c["belly"])
+    _feet(d, x, y, h, darken(c["body"], 0.2), spread=0.15)
+    _arms(d, x, bcy - h * 0.02, h * 0.24, h, pose, darken(c["body"], 0.14), facing)
+    # little horns
+    for sx in (-1, 1):
+        ex = x + sx * hr * 0.5
+        d.polygon([(ex - h * 0.02, hcy - hr * 0.78), (ex, hcy - hr * 1.14),
+                   (ex + h * 0.02, hcy - hr * 0.78)], fill=c["horn"])
+    d.circle(x, hcy, hr, fill=c["body"])
+    d.ellipse(x, hcy + hr * 0.42, hr * 0.5, hr * 0.34, fill=c["belly"])
+    _face(d, x + facing * h * 0.012, hcy + hr * 0.04, h * 0.40, expr, facing)
+    for sx in (-1, 1):
+        d.dot(x + sx * h * 0.03, hcy + hr * 0.40, h * 0.016, darken(c["body"], 0.3))
+
+
+def _dino(d, x, y, h, expr, pose, facing):
+    c = COLORS["dino"]
+    rx, ry = h * 0.31, h * 0.40
+    cy = y - ry - h * 0.02
+    # thick curving tail behind
+    d.arc(x - facing * h * 0.24, y - h * 0.20, h * 0.16, 100 if facing > 0 else -30,
+          210 if facing > 0 else 80, color=c["body"], lw=h * 0.08)
+    # row of back plates up the spine
+    for i, (px, py, s) in enumerate(((-0.28, 0.30, 0.9), (-0.12, 0.62, 1.1),
+                                     (0.06, 0.72, 1.15), (0.24, 0.55, 1.0))):
+        bx = x - facing * px * rx * 1.2
+        byy = cy - py * ry
+        d.polygon([(bx - h * 0.05 * s, byy + h * 0.06), (bx, byy - h * 0.09 * s),
+                   (bx + h * 0.05 * s, byy + h * 0.06)], fill=c["plate"])
+    _feet(d, x, y, h, darken(c["body"], 0.2), spread=0.16)
+    _arms(d, x, cy + ry * 0.34, rx * 0.9, h, pose, darken(c["body"], 0.14), facing)
+    d.ellipse(x, cy, rx, ry, fill=c["body"])
+    d.ellipse(x, cy + ry * 0.28, rx * 0.66, ry * 0.6, fill=c["belly"])
+    _face(d, x + facing * h * 0.015, cy - ry * 0.14, h * 0.44, expr, facing)
+    # nostrils
+    for sx in (-1, 1):
+        d.dot(x + sx * h * 0.03, cy - ry * 0.02, h * 0.014, darken(c["body"], 0.3))
+
+
 def _blob(d, x, y, h, expr, pose, facing):
     """Fallback character so an unknown key never crashes a build."""
     body = (180, 180, 210)
@@ -1069,6 +1533,21 @@ _REGISTRY = {
     "squirrel": _squirrel,
     "ladybug": _ladybug,
     "snail": _snail,
+    "penguin": _penguin,
+    "seal": _seal,
+    "polar_bear": _polar_bear,
+    "elephant": _elephant,
+    "lion": _lion,
+    "monkey": _monkey,
+    "frog": _frog,
+    "duck": _duck,
+    "panda": _panda,
+    "koala": _koala,
+    "deer": _deer,
+    "raccoon": _raccoon,
+    "unicorn": _unicorn,
+    "dragon": _dragon,
+    "dino": _dino,
 }
 
 

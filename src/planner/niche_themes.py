@@ -43,6 +43,12 @@ NICHE_MOTIFS: dict[str, tuple[str, ...]] = {
     "budget_planner":  ("finance", "geometric", "minimal"),
     "teacher_planner": ("teaching", "geometric", "minimal"),
     "adhd_planner":    ("focus", "geometric", "minimal"),
+    "travel":          ("travel", "geometric", "minimal"),
+    "wedding":         ("wedding", "geometric", "minimal"),
+    "meal_recipe":     ("meal_recipe", "geometric", "minimal"),
+    "self_care":       ("self_care", "geometric", "minimal"),
+    "home_management": ("home_management", "geometric", "minimal"),
+    "small_business":  ("small_business", "geometric", "minimal"),
 }
 
 #: Thematic motifs that must NEVER survive on a themed niche (they carry a

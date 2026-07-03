@@ -1114,6 +1114,822 @@ def _curriculum_overview(pdf: FPDF, ctx: PageContext) -> None:
         pdf.rect(grid.x, grid.y, grid.w, grid.h, style="D")
 
 
+# ===================================================================
+# Shared helpers for the expansion niches
+# ===================================================================
+
+def _titled_table(pdf: FPDF, ctx: PageContext, panel: Panel, title: str,
+                  cols: list, n_rows: int, **kw) -> None:
+    """A section label followed by a table filling the rest of *panel*."""
+    y = section_label(pdf, ctx.theme, panel.x, panel.y, title,
+                      underline_w=panel.w)
+    table(pdf, ctx.theme, Panel(panel.x, y, panel.w, panel.y2 - y), cols,
+          n_rows=n_rows, **kw)
+
+
+def _checklist_columns(pdf: FPDF, ctx: PageContext, panel: Panel,
+                       spacing: float = 7.8, n_cols: int = 2) -> None:
+    """Fill *panel* with n_cols columns of checkbox lines."""
+    for col in panel.cols(n_cols, gap=8):
+        checkbox_lines(pdf, ctx.theme, col, spacing=spacing)
+
+
+def _label_grid(pdf: FPDF, ctx: PageContext, panel: Panel,
+                col_heads: tuple, row_heads: tuple,
+                label_w: float = 20.0, header_h: float = 7.0) -> None:
+    """A matrix: banded column headers + row-label gutter + write-in cells.
+
+    Reused for weekly menus, chore grids and household meal grids.
+    """
+    theme = ctx.theme
+    n_cols = len(col_heads)
+    col_w = (panel.w - label_w) / n_cols
+    row_h = (panel.h - header_h) / len(row_heads)
+    band = theme.band_fill()
+    if band is not None:
+        pdf.set_fill_color(*band)
+        pdf.rect(panel.x, panel.y, panel.w, header_h, style="F")
+    theme.set_type(pdf, "inline_label", size=6.0)
+    pdf.set_text_color(*theme.band_text_c())
+    for i, head in enumerate(col_heads):
+        pdf.set_xy(panel.x + label_w + i * col_w, panel.y)
+        pdf.cell(col_w, header_h, head.upper(), align="C")
+    gr = theme.rule_c()
+    for i, rh in enumerate(row_heads):
+        ry = panel.y + header_h + i * row_h
+        theme.set_type(pdf, "inline_label", size=6.2)
+        pdf.set_text_color(*theme.rgb("text_light"))
+        pdf.set_xy(panel.x + 1, ry)
+        pdf.cell(label_w - 2, row_h, rh.upper(), align="L")
+        pdf.set_draw_color(*gr)
+        pdf.set_line_width(0.2)
+        pdf.line(panel.x, ry, panel.x2, ry)
+    pdf.set_draw_color(*gr)
+    pdf.line(panel.x, panel.y2, panel.x2, panel.y2)
+    for i in range(n_cols + 1):
+        x = panel.x + label_w + i * col_w
+        pdf.line(x, panel.y, x, panel.y2)
+    pdf.line(panel.x, panel.y, panel.x, panel.y2)
+    pdf.set_draw_color(*theme.border_c())
+    pdf.set_line_width(0.3)
+    pdf.rect(panel.x, panel.y, panel.w, panel.h, style="D")
+
+
+def _day_timeline(pdf: FPDF, ctx: PageContext, panel: Panel, title: str,
+                  hours: list[int]) -> None:
+    """An hour-by-hour ruled timeline (travel itinerary, day plans)."""
+    theme = ctx.theme
+    y = section_label(pdf, theme, panel.x, panel.y, title, underline_w=panel.w)
+    grid = Panel(panel.x, y + 1, panel.w, panel.y2 - y - 1)
+    time_w = 16.0
+    row_h = grid.h / len(hours)
+    gr = theme.rule_c()
+    for i, hr in enumerate(hours):
+        ry = grid.y + i * row_h
+        h12 = hr if hr <= 12 else hr - 12
+        ampm = "am" if hr < 12 else "pm"
+        theme.set_type(pdf, "mini_digit", size=5.6)
+        pdf.set_text_color(*theme.rgb("text_light"))
+        pdf.set_xy(grid.x, ry)
+        pdf.cell(time_w - 1.5, row_h, f"{h12}{ampm}", align="R")
+        pdf.set_draw_color(*gr)
+        pdf.set_line_width(0.2)
+        pdf.line(grid.x + time_w, ry, grid.x2, ry)
+    pdf.line(grid.x + time_w, grid.y, grid.x + time_w, grid.y2)
+    pdf.set_draw_color(*theme.border_c())
+    pdf.set_line_width(0.3)
+    pdf.rect(grid.x, grid.y, grid.w, grid.h, style="D")
+
+
+# ===================================================================
+# TRAVEL PLANNER
+# ===================================================================
+
+def _trip_overview(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.20, 0.44, 0.36], gap=7)
+    labelled_box(pdf, theme, lsecs[0], "Destination · Dates · Travelers",
+                 lines_spacing=8.0)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y,
+                      "Trip Vision & Must-Sees", underline_w=lsecs[1].w)
+    ruled_lines(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+                spacing=8.2)
+    y = section_label(pdf, theme, lsecs[2].x, lsecs[2].y, "Budget Snapshot",
+                      underline_w=lsecs[2].w)
+    table(pdf, theme, Panel(lsecs[2].x, y, lsecs[2].w, lsecs[2].y2 - y),
+          [("Category", 0.5), ("Budget", 0.25), ("Actual", 0.25)], n_rows=5)
+    rsecs = rb.split_v([0.5, 0.5], gap=7)
+    y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y,
+                      "Before I Go Checklist", underline_w=rsecs[0].w)
+    checkbox_lines(pdf, theme, Panel(rsecs[0].x, y, rsecs[0].w, rsecs[0].y2 - y),
+                   spacing=8.6)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
+                      "Key Contacts & Confirmations", underline_w=rsecs[1].w)
+    table(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+          [("What", 0.4), ("Contact / Ref #", 0.6)], n_rows=8)
+
+
+def _itinerary(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    hours = list(range(7, 22))
+    _day_timeline(pdf, ctx, lb, "Day Plan · Morning to Night", hours)
+    rsecs = rb.split_v([0.68, 0.32], gap=7)
+    _day_timeline(pdf, ctx, rsecs[0], "Next Day", hours)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
+                      "Reservations & Tickets", underline_w=rsecs[1].w)
+    table(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+          [("Time", 0.2), ("Activity", 0.5), ("Ref #", 0.3)], n_rows=4)
+
+
+def _packing_list(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    cats_l = ("Clothing", "Toiletries", "Tech & Chargers")
+    cats_r = ("Documents", "Health & Meds", "Extras & Misc")
+    for panel, cats in ((ctx.geo.left_body(), cats_l),
+                        (ctx.geo.right_body(), cats_r)):
+        for sec, cat in zip(panel.rows(3, gap=8), cats):
+            y = section_label(pdf, theme, sec.x, sec.y, cat, underline_w=sec.w)
+            _checklist_columns(pdf, ctx, Panel(sec.x, y, sec.w, sec.y2 - y),
+                               spacing=7.8)
+
+
+def _travel_budget(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.14, 0.86], gap=7)
+    for box, lbl in zip(lsecs[0].cols(2, gap=6),
+                        ("Total Budget", "Total Spent")):
+        labelled_box(pdf, theme, box, lbl, label_h=6.5, lines_spacing=None)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y, "Budget by Category",
+                      underline_w=lsecs[1].w)
+    table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+          [("Category", 0.4), ("Budget", 0.2), ("Actual", 0.2), ("Diff", 0.2)],
+          n_rows=13, zebra=True)
+    _titled_table(pdf, ctx, rb, "Daily Spending Log",
+                  [("Date", 0.16), ("Item", 0.44), ("Category", 0.2),
+                   ("Amount", 0.2)], n_rows=18, zebra=True)
+
+
+def _accommodation(pdf: FPDF, ctx: PageContext) -> None:
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _titled_table(pdf, ctx, lb, "Accommodation",
+                  [("Place / Hotel", 0.34), ("Check In", 0.18),
+                   ("Check Out", 0.18), ("Confirmation #", 0.3)],
+                  n_rows=11, zebra=True)
+    _titled_table(pdf, ctx, rb, "Transport · Flights, Trains, Car",
+                  [("Type", 0.16), ("From → To", 0.34), ("Date", 0.18),
+                   ("Time", 0.14), ("Ref #", 0.18)], n_rows=11, zebra=True)
+
+
+def _travel_journal(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    y = section_label(pdf, theme, lb.x, lb.y, "Trip Highlights & Memories",
+                      underline_w=lb.w)
+    ruled_lines(pdf, theme, Panel(lb.x, y, lb.w, lb.y2 - y), spacing=8.4)
+    rsecs = rb.split_v([0.5, 0.5], gap=7)
+    labelled_box(pdf, theme, rsecs[0], "Best Meal · Best View · Best Moment",
+                 lines_spacing=8.4)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
+                      "Places to Come Back To", underline_w=rsecs[1].w)
+    checkbox_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                   spacing=8.6)
+
+
+# ===================================================================
+# WEDDING PLANNER
+# ===================================================================
+
+def _wedding_overview(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.22, 0.44, 0.34], gap=7)
+    labelled_box(pdf, theme, lsecs[0], "The Big Day · Date · Venue · Theme",
+                 lines_spacing=8.0)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y, "Our Vision & Colors",
+                      underline_w=lsecs[1].w)
+    ruled_lines(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+                spacing=8.2)
+    y = section_label(pdf, theme, lsecs[2].x, lsecs[2].y, "Wedding Party",
+                      underline_w=lsecs[2].w)
+    table(pdf, theme, Panel(lsecs[2].x, y, lsecs[2].w, lsecs[2].y2 - y),
+          [("Name", 0.5), ("Role", 0.3), ("Contact", 0.2)], n_rows=5)
+    rsecs = rb.split_v([0.14, 0.5, 0.36], gap=7)
+    for box, lbl in zip(rsecs[0].cols(2, gap=6),
+                        ("Total Budget", "Guest Count")):
+        labelled_box(pdf, theme, box, lbl, label_h=6.5, lines_spacing=None)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y, "Top Priorities",
+                      underline_w=rsecs[1].w)
+    checkbox_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                   spacing=8.6)
+    labelled_box(pdf, theme, rsecs[2], "Inspiration & Notes", lines_spacing=8.2)
+
+
+def _wedding_timeline(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    left_buckets = ("12+ Months Out", "9 Months Out", "6 Months Out")
+    right_buckets = ("3 Months Out", "1 Month Out", "Week Of")
+    for panel, buckets in ((lb, left_buckets), (rb, right_buckets)):
+        for sec, title in zip(panel.rows(3, gap=8), buckets):
+            y = section_label(pdf, theme, sec.x, sec.y, title,
+                              underline_w=sec.w)
+            checkbox_lines(pdf, theme, Panel(sec.x, y, sec.w, sec.y2 - y),
+                           spacing=8.2)
+
+
+def _wedding_budget(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.13, 0.87], gap=7)
+    for box, lbl in zip(lsecs[0].cols(3, gap=5),
+                        ("Budget", "Spent", "Remaining")):
+        labelled_box(pdf, theme, box, lbl, label_h=6.0, lines_spacing=None)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y, "Budget Breakdown",
+                      underline_w=lsecs[1].w)
+    table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+          [("Item", 0.4), ("Estimate", 0.2), ("Actual", 0.2), ("Paid?", 0.2)],
+          n_rows=15, zebra=True)
+    _titled_table(pdf, ctx, rb, "Payments & Deposits",
+                  [("Vendor", 0.34), ("Due Date", 0.2), ("Deposit", 0.2),
+                   ("Balance", 0.26)], n_rows=18, zebra=True)
+
+
+def _vendor_tracker(pdf: FPDF, ctx: PageContext) -> None:
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _titled_table(pdf, ctx, lb, "Vendors Booked",
+                  [("Service", 0.24), ("Company", 0.28), ("Contact", 0.28),
+                   ("Cost", 0.2)], n_rows=16, zebra=True)
+    _titled_table(pdf, ctx, rb, "Comparing Quotes",
+                  [("Service", 0.26), ("Option", 0.3), ("Quote", 0.22),
+                   ("Notes", 0.22)], n_rows=16, zebra=True)
+
+
+def _guest_list(pdf: FPDF, ctx: PageContext) -> None:
+    cols = [("#", 0.06), ("Guest Name", 0.34), ("Party", 0.14),
+            ("RSVP", 0.14), ("Meal", 0.16), ("Gift", 0.16)]
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _titled_table(pdf, ctx, lb, "Guest List & RSVP", cols, n_rows=20,
+                  zebra=True, row_labels=[str(i + 1) for i in range(20)])
+    _titled_table(pdf, ctx, rb, "Guest List & RSVP (cont.)", cols, n_rows=20,
+                  zebra=True, row_labels=[str(i + 21) for i in range(20)])
+
+
+def _seating_chart(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+
+    def table_cards(panel: Panel, start: int, n_cols: int, n_rows: int,
+                    seats: int = 6) -> None:
+        cells = [c for row in panel.rows(n_rows, gap=6)
+                 for c in row.cols(n_cols, gap=6)]
+        for i, cell in enumerate(cells):
+            pdf.set_draw_color(*theme.border_c())
+            pdf.set_line_width(0.3)
+            pdf.rect(cell.x, cell.y, cell.w, cell.h, style="D",
+                     round_corners=True, corner_radius=2.2)
+            cx, cy = cell.x + cell.w / 2, cell.y + cell.h * 0.30
+            r = min(cell.w, cell.h) * 0.15
+            pdf.set_draw_color(*blend(theme.rgb("secondary"),
+                                      theme.structural(), 0.3))
+            pdf.set_line_width(0.5)
+            pdf.ellipse(cx - r, cy - r, r * 2, r * 2, style="D")
+            theme.set_type(pdf, "inline_label", size=6.5)
+            pdf.set_text_color(*theme.rgb("text_light"))
+            pdf.set_xy(cx - r, cy - 2)
+            pdf.cell(r * 2, 4, f"T{start + i}", align="C")
+            lines = Panel(cell.x + 3, cell.y + cell.h * 0.48, cell.w - 6,
+                          cell.h * 0.5 - 3)
+            _numbered_lines(pdf, ctx, lines, seats)
+
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    table_cards(lb, 1, 2, 2, seats=6)
+    rsecs = rb.split_v([0.62, 0.38], gap=7)
+    table_cards(rsecs[0], 5, 2, 1, seats=6)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
+                      "Head Table & Special Seating", underline_w=rsecs[1].w)
+    ruled_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                spacing=8.2)
+
+
+# ===================================================================
+# MEAL & RECIPE PLANNER
+# ===================================================================
+
+def _weekly_menu(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    meals = ("Breakfast", "Lunch", "Dinner", "Snacks")
+    _label_grid(pdf, ctx, lb, meals, ("Mon", "Tue", "Wed", "Thu"), label_w=18)
+    rsecs = rb.split_v([0.56, 0.44], gap=7)
+    _label_grid(pdf, ctx, rsecs[0], meals, ("Fri", "Sat", "Sun"), label_w=18)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
+                      "This Week's Notes & Leftovers", underline_w=rsecs[1].w)
+    ruled_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                spacing=8.2)
+
+
+def _grocery_list(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    cats_l = ("Produce", "Meat & Seafood", "Dairy & Eggs")
+    cats_r = ("Pantry & Dry Goods", "Frozen", "Household & Other")
+    for panel, cats in ((ctx.geo.left_body(), cats_l),
+                        (ctx.geo.right_body(), cats_r)):
+        for sec, cat in zip(panel.rows(3, gap=8), cats):
+            y = section_label(pdf, theme, sec.x, sec.y, cat, underline_w=sec.w)
+            _checklist_columns(pdf, ctx, Panel(sec.x, y, sec.w, sec.y2 - y),
+                               spacing=7.6)
+
+
+def _recipe_card(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    gr = theme.rule_c()
+    for panel in (ctx.geo.left_body(), ctx.geo.right_body()):
+        pdf.set_fill_color(*WHITE)
+        pdf.set_draw_color(*theme.border_c())
+        pdf.set_line_width(0.35)
+        pdf.rect(panel.x, panel.y, panel.w, panel.h, style="FD",
+                 round_corners=True, corner_radius=2.5)
+        inner = panel.inset(6, 5)
+        theme.set_type(pdf, "inline_label", size=7.5)
+        pdf.set_text_color(*theme.rgb("text_light"))
+        pdf.set_xy(inner.x, inner.y)
+        pdf.cell(24, 5, "RECIPE", align="L")
+        pdf.set_draw_color(*gr)
+        pdf.line(inner.x + 25, inner.y + 4.4, inner.x2, inner.y + 4.4)
+        row_y = inner.y + 10
+        for i, lbl in enumerate(("SERVES", "PREP", "COOK")):
+            x = inner.x + i * inner.w / 3
+            pdf.set_xy(x, row_y)
+            pdf.cell(pdf.get_string_width(lbl) + 1, 5, lbl, align="L")
+            pdf.line(x + pdf.get_string_width(lbl) + 2, row_y + 4.4,
+                     x + inner.w / 3 - 6, row_y + 4.4)
+        body = Panel(inner.x, row_y + 10, inner.w, inner.y2 - row_y - 10)
+        cols = body.cols(2, gap=8)
+        y = section_label(pdf, theme, cols[0].x, cols[0].y, "Ingredients",
+                          size=7)
+        checkbox_lines(pdf, theme, Panel(cols[0].x, y, cols[0].w,
+                                         cols[0].y2 - y), spacing=7.4)
+        y = section_label(pdf, theme, cols[1].x, cols[1].y, "Method", size=7)
+        ruled_lines(pdf, theme, Panel(cols[1].x, y, cols[1].w, cols[1].y2 - y),
+                    spacing=7.4)
+
+
+def _pantry_inventory(pdf: FPDF, ctx: PageContext) -> None:
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _titled_table(pdf, ctx, lb, "Pantry Inventory",
+                  [("Item", 0.44), ("Qty", 0.18), ("Have", 0.18),
+                   ("Restock", 0.2)], n_rows=20, zebra=True)
+    _titled_table(pdf, ctx, rb, "Freezer Inventory",
+                  [("Item", 0.4), ("Qty", 0.16), ("Frozen On", 0.22),
+                   ("Use By", 0.22)], n_rows=20, zebra=True)
+
+
+def _meal_prep(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    for sec, title in zip(lb.split_v([0.5, 0.5], gap=8),
+                          ("Prep Day To-Do", "Cook & Batch")):
+        y = section_label(pdf, theme, sec.x, sec.y, title, underline_w=sec.w)
+        checkbox_lines(pdf, theme, Panel(sec.x, y, sec.w, sec.y2 - y),
+                       spacing=8.4)
+    _titled_table(pdf, ctx, rb, "Prep Plan by Meal",
+                  [("Meal", 0.34), ("Components to Prep", 0.44),
+                   ("Store In", 0.22)], n_rows=16, zebra=True)
+
+
+def _recipe_wishlist(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _titled_table(pdf, ctx, lb, "Recipes to Try",
+                  [("#", 0.08), ("Recipe", 0.5), ("Source", 0.28),
+                   ("Tried", 0.14)], n_rows=18, zebra=True,
+                  row_labels=[str(i + 1) for i in range(18)])
+    rsecs = rb.split_v([0.6, 0.4], gap=7)
+    _titled_table(pdf, ctx, rsecs[0], "Family Favorites",
+                  [("Recipe", 0.5), ("Who Loves It", 0.3), ("Rating", 0.2)],
+                  n_rows=12, zebra=True)
+    labelled_box(pdf, theme, rsecs[1], "Takeout & Restaurant Notes",
+                 lines_spacing=8.2)
+
+
+# ===================================================================
+# SELF-CARE PLANNER
+# ===================================================================
+
+def _self_care_routine(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    for panel, title, hint in (
+        (lb, "Morning Ritual", "ease into the day"),
+        (rb, "Evening Wind-Down", "release the day"),
+    ):
+        y = section_label(pdf, theme, panel.x, panel.y, title,
+                          underline_w=panel.w)
+        _accent_note_font(pdf, theme, 12)
+        pdf.set_text_color(*blend(theme.rgb("primary"), theme.rgb("text"), 0.15))
+        pdf.set_xy(panel.x, y)
+        pdf.cell(panel.w, 7, hint, align="C")
+        body = Panel(panel.x, y + 10, panel.w, panel.y2 - y - 10)
+        secs = body.split_v([0.62, 0.38], gap=7)
+        checkbox_lines(pdf, theme, secs[0], spacing=8.8)
+        labelled_box(pdf, theme, secs[1], "How I Want to Feel",
+                     lines_spacing=8.2)
+
+
+def _mood_tracker(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    gr = theme.rule_c()
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    y = section_label(pdf, theme, lb.x, lb.y, "Monthly Mood · Color Each Day",
+                      underline_w=lb.w)
+    grid = Panel(lb.x, y + 3, lb.w, lb.y2 - y - 3)
+    n_cols, n_rows = 7, 5
+    cw, ch = grid.w / n_cols, grid.h / n_rows
+    day = 1
+    for r in range(n_rows):
+        for c in range(n_cols):
+            if day > 31:
+                break
+            cx, cy = grid.x + c * cw, grid.y + r * ch
+            pdf.set_draw_color(*blend(gr, theme.structural(), 0.3))
+            pdf.set_line_width(0.3)
+            pdf.rect(cx + 1, cy + 1, cw - 2, ch - 2, style="D",
+                     round_corners=True, corner_radius=1.5)
+            theme.set_type(pdf, "mini_digit", size=6)
+            pdf.set_text_color(*theme.rgb("text_light"))
+            pdf.set_xy(cx + 2, cy + 2)
+            pdf.cell(6, 4, str(day), align="L")
+            day += 1
+    rsecs = rb.split_v([0.34, 0.33, 0.33], gap=7)
+    y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Mood Legend",
+                      underline_w=rsecs[0].w)
+    for i, lbl in enumerate(("Great", "Good", "Okay", "Low", "Rough")):
+        lx = rsecs[0].x + 2
+        ly = y + 2 + i * 6.5
+        with pdf.local_context(fill_opacity=max(0.1, 0.6 - i * 0.11)):
+            pdf.set_fill_color(*theme.rgb("primary"))
+            pdf.rect(lx, ly, 6, 4.5, style="F", round_corners=True,
+                     corner_radius=0.8)
+        theme.set_type(pdf, "mini_digit", size=7)
+        pdf.set_text_color(*theme.rgb("text_light"))
+        pdf.set_xy(lx + 9, ly)
+        pdf.cell(40, 4.5, lbl, align="L")
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y, "What Lifted My Mood",
+                      underline_w=rsecs[1].w)
+    ruled_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                spacing=8.2)
+    y = section_label(pdf, theme, rsecs[2].x, rsecs[2].y,
+                      "Be Gentle With Yourself", underline_w=rsecs[2].w)
+    ruled_lines(pdf, theme, Panel(rsecs[2].x, y, rsecs[2].w, rsecs[2].y2 - y),
+                spacing=8.2)
+
+
+def _self_care_habits(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    gr = theme.rule_c()
+    for panel in (ctx.geo.left_body(), ctx.geo.right_body()):
+        y = section_label(pdf, theme, panel.x, panel.y,
+                          "Wellness Habits · Check Each Day",
+                          underline_w=panel.w)
+        grid = Panel(panel.x, y + 1, panel.w, panel.y2 - y - 1)
+        label_w = grid.w * 0.3
+        header_h = 6.0
+        n_days, n_rows = 31, 12
+        day_w = (grid.w - label_w) / n_days
+        row_h = (grid.h - header_h) / n_rows
+        band = theme.band_fill()
+        if band is not None:
+            pdf.set_fill_color(*band)
+            pdf.rect(grid.x, grid.y, grid.w, header_h, style="F")
+        theme.set_type(pdf, "inline_label", size=5.5)
+        pdf.set_text_color(*theme.band_text_c())
+        pdf.set_xy(grid.x, grid.y)
+        pdf.cell(label_w, header_h, "HABIT", align="C")
+        theme.set_type(pdf, "mini_digit", size=4.2)
+        for d in range(n_days):
+            pdf.set_xy(grid.x + label_w + d * day_w, grid.y + 1)
+            pdf.cell(day_w, header_h - 2, str(d + 1), align="C")
+        pdf.set_draw_color(*gr)
+        pdf.set_line_width(0.15)
+        for r in range(n_rows + 1):
+            ry = grid.y + header_h + r * row_h
+            pdf.line(grid.x, ry, grid.x2, ry)
+        pdf.line(grid.x + label_w, grid.y, grid.x + label_w, grid.y2)
+        for d in range(1, n_days):
+            x = grid.x + label_w + d * day_w
+            pdf.line(x, grid.y + header_h, x, grid.y2)
+        pdf.set_draw_color(*theme.border_c())
+        pdf.set_line_width(0.3)
+        pdf.rect(grid.x, grid.y, grid.w, grid.h, style="D")
+
+
+def _gratitude_reflection(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    y = section_label(pdf, theme, lb.x, lb.y, "Today I'm Grateful For",
+                      underline_w=lb.w)
+    _numbered_lines(pdf, ctx, Panel(lb.x, y + 2, lb.w, lb.h * 0.34), 5)
+    y2 = section_label(pdf, theme, lb.x, lb.y + lb.h * 0.44, "Small Wins",
+                       underline_w=lb.w)
+    checkbox_lines(pdf, theme, Panel(lb.x, y2, lb.w, lb.y2 - y2), spacing=8.6)
+    rsecs = rb.split_v([0.5, 0.5], gap=7)
+    labelled_box(pdf, theme, rsecs[0], "Something Beautiful I Noticed",
+                 lines_spacing=8.4)
+    labelled_box(pdf, theme, rsecs[1], "A Person I Appreciate & Why",
+                 lines_spacing=8.4)
+
+
+def _sleep_log(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _titled_table(pdf, ctx, lb, "Sleep & Energy Log",
+                  [("Day", 0.12), ("Bed", 0.16), ("Wake", 0.16), ("Hrs", 0.12),
+                   ("Quality", 0.22), ("Energy", 0.22)], n_rows=16, zebra=True)
+    rsecs = rb.split_v([0.6, 0.4], gap=7)
+    y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Wind-Down Routine",
+                      underline_w=rsecs[0].w)
+    checkbox_lines(pdf, theme, Panel(rsecs[0].x, y, rsecs[0].w, rsecs[0].y2 - y),
+                   spacing=8.6)
+    labelled_box(pdf, theme, rsecs[1], "What Helped Me Rest", lines_spacing=8.2)
+
+
+def _affirmations(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    gr = theme.rule_c()
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    y = section_label(pdf, theme, lb.x, lb.y, "Daily Affirmations",
+                      underline_w=lb.w)
+    area = Panel(lb.x, y + 3, lb.w, lb.y2 - y - 3)
+    for card in area.rows(6, gap=6):
+        pdf.set_draw_color(*blend(gr, theme.structural(), 0.3))
+        pdf.set_line_width(0.3)
+        pdf.rect(card.x, card.y, card.w, card.h, style="D",
+                 round_corners=True, corner_radius=2.5)
+        theme.set_type(pdf, "inline_label", size=8)
+        pdf.set_text_color(*blend(theme.rgb("primary"), theme.rgb("text"), 0.2))
+        prompt_w = pdf.get_string_width("I am") + 2
+        pdf.set_xy(card.x + 5, card.y + card.h / 2 - 3)
+        pdf.cell(prompt_w, 6, "I am", align="L")
+        pdf.set_draw_color(*gr)
+        pdf.line(card.x + 6 + prompt_w, card.y + card.h / 2 + 2,
+                 card.x2 - 5, card.y + card.h / 2 + 2)
+    rsecs = rb.split_v([0.5, 0.5], gap=7)
+    labelled_box(pdf, theme, rsecs[0], "A Kind Letter to Myself",
+                 lines_spacing=8.6)
+    labelled_box(pdf, theme, rsecs[1], "Words That Ground Me",
+                 lines_spacing=8.6)
+
+
+# ===================================================================
+# HOME MANAGEMENT PLANNER
+# ===================================================================
+
+def _household_info(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.5, 0.5], gap=7)
+    y = section_label(pdf, theme, lsecs[0].x, lsecs[0].y, "Family Members",
+                      underline_w=lsecs[0].w)
+    table(pdf, theme, Panel(lsecs[0].x, y, lsecs[0].w, lsecs[0].y2 - y),
+          [("Name", 0.34), ("Birthday", 0.22), ("Phone", 0.24),
+           ("Blood Type", 0.2)], n_rows=6)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y, "Emergency Contacts",
+                      underline_w=lsecs[1].w)
+    table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+          [("Contact", 0.4), ("Relationship", 0.3), ("Phone", 0.3)], n_rows=6)
+    rsecs = rb.split_v([0.5, 0.5], gap=7)
+    y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Important Services",
+                      underline_w=rsecs[0].w)
+    table(pdf, theme, Panel(rsecs[0].x, y, rsecs[0].w, rsecs[0].y2 - y),
+          [("Service", 0.3), ("Provider", 0.34), ("Account / Phone", 0.36)],
+          n_rows=8)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
+                      "Wifi, Codes & Key Info", underline_w=rsecs[1].w)
+    ruled_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                spacing=8.4)
+
+
+def _cleaning_schedule(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.34, 0.66], gap=8)
+    y = section_label(pdf, theme, lsecs[0].x, lsecs[0].y, "Daily Reset",
+                      underline_w=lsecs[0].w)
+    _checklist_columns(pdf, ctx, Panel(lsecs[0].x, y, lsecs[0].w,
+                                       lsecs[0].y2 - y), spacing=7.8)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y,
+                      "Weekly Focus by Day", underline_w=lsecs[1].w)
+    table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+          [("Day", 0.2), ("Cleaning Focus", 0.62), ("Done", 0.18)], n_rows=7,
+          row_labels=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+    rsecs = rb.split_v([0.6, 0.4], gap=7)
+    y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Monthly Deep Clean",
+                      underline_w=rsecs[0].w)
+    _checklist_columns(pdf, ctx, Panel(rsecs[0].x, y, rsecs[0].w,
+                                       rsecs[0].y2 - y), spacing=8.2)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
+                      "Cleaning Supplies to Restock", underline_w=rsecs[1].w)
+    checkbox_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                   spacing=8.2)
+
+
+def _chore_chart(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    y = section_label(pdf, theme, lb.x, lb.y, "Weekly Chore Grid",
+                      underline_w=lb.w)
+    grid = Panel(lb.x, y + 1, lb.w, lb.y2 - y - 1)
+    _label_grid(pdf, ctx, grid, ("M", "T", "W", "T", "F", "S", "S"),
+                tuple([""] * 10), label_w=grid.w * 0.34, header_h=7)
+    rsecs = rb.split_v([0.55, 0.45], gap=7)
+    _titled_table(pdf, ctx, rsecs[0], "Who Does What",
+                  [("Chore", 0.42), ("Assigned To", 0.34), ("Day", 0.24)],
+                  n_rows=10, zebra=True)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y, "Rewards & Allowance",
+                      underline_w=rsecs[1].w)
+    table(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+          [("Name", 0.34), ("Chores Done", 0.33), ("Reward", 0.33)], n_rows=6)
+
+
+def _home_maintenance(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    seasons_l = ("Spring", "Summer")
+    seasons_r = ("Fall", "Winter")
+    for panel, seasons in ((ctx.geo.left_body(), seasons_l),
+                           (ctx.geo.right_body(), seasons_r)):
+        for sec, s in zip(panel.rows(2, gap=8), seasons):
+            y = section_label(pdf, theme, sec.x, sec.y, f"{s} Maintenance",
+                              underline_w=sec.w)
+            _checklist_columns(pdf, ctx, Panel(sec.x, y, sec.w, sec.y2 - y),
+                               spacing=8.2)
+
+
+def _bills_budget(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.14, 0.86], gap=7)
+    for box, lbl in zip(lsecs[0].cols(2, gap=6),
+                        ("Monthly Income", "Monthly Expenses")):
+        labelled_box(pdf, theme, box, lbl, label_h=6.5, lines_spacing=None)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y, "Monthly Bills",
+                      underline_w=lsecs[1].w)
+    table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+          [("Bill", 0.34), ("Due", 0.16), ("Amount", 0.2), ("Paid", 0.16),
+           ("Auto", 0.14)], n_rows=15, zebra=True)
+    _titled_table(pdf, ctx, rb, "Household Spending",
+                  [("Date", 0.16), ("Category", 0.24), ("Description", 0.4),
+                   ("Amount", 0.2)], n_rows=18, zebra=True)
+
+
+def _home_meal_grocery(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _label_grid(pdf, ctx, lb, ("Breakfast", "Lunch", "Dinner"),
+                ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+                label_w=18, header_h=7)
+    rsecs = rb.split_v([0.2, 0.8], gap=7)
+    y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y,
+                      "This Week's Prep Notes", underline_w=rsecs[0].w)
+    ruled_lines(pdf, theme, Panel(rsecs[0].x, y, rsecs[0].w, rsecs[0].y2 - y),
+                spacing=7.6)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y, "Grocery List",
+                      underline_w=rsecs[1].w)
+    _checklist_columns(pdf, ctx, Panel(rsecs[1].x, y, rsecs[1].w,
+                                       rsecs[1].y2 - y), spacing=7.8)
+
+
+# ===================================================================
+# SMALL BUSINESS PLANNER
+# ===================================================================
+
+def _biz_overview(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.22, 0.4, 0.38], gap=7)
+    labelled_box(pdf, theme, lsecs[0], "Business Name · Mission · Tagline",
+                 lines_spacing=8.0)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y, "Brand & Voice",
+                      underline_w=lsecs[1].w)
+    ruled_lines(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+                spacing=8.2)
+    y = section_label(pdf, theme, lsecs[2].x, lsecs[2].y, "Target Customer",
+                      underline_w=lsecs[2].w)
+    ruled_lines(pdf, theme, Panel(lsecs[2].x, y, lsecs[2].w, lsecs[2].y2 - y),
+                spacing=8.2)
+    rsecs = rb.split_v([0.14, 0.5, 0.36], gap=7)
+    for box, lbl in zip(rsecs[0].cols(2, gap=6),
+                        ("Revenue Goal", "Profit Goal")):
+        labelled_box(pdf, theme, box, lbl, label_h=6.5, lines_spacing=None)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y, "Quarterly Goals",
+                      underline_w=rsecs[1].w)
+    checkbox_lines(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
+                   spacing=8.6)
+    labelled_box(pdf, theme, rsecs[2], "Ideas & Opportunities",
+                 lines_spacing=8.2)
+
+
+def _income_expense(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.13, 0.87], gap=7)
+    for box, lbl in zip(lsecs[0].cols(3, gap=5),
+                        ("Income", "Expenses", "Profit")):
+        labelled_box(pdf, theme, box, lbl, label_h=6.0, lines_spacing=None)
+    y = section_label(pdf, theme, lsecs[1].x, lsecs[1].y, "Income",
+                      underline_w=lsecs[1].w)
+    table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
+          [("Date", 0.16), ("Source", 0.44), ("Category", 0.2),
+           ("Amount", 0.2)], n_rows=15, zebra=True)
+    _titled_table(pdf, ctx, rb, "Expenses",
+                  [("Date", 0.14), ("Description", 0.4), ("Category", 0.22),
+                   ("Amount", 0.24)], n_rows=18, zebra=True)
+
+
+def _order_tracker(pdf: FPDF, ctx: PageContext) -> None:
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    cols = [("Date", 0.13), ("Order #", 0.15), ("Customer", 0.24),
+            ("Item", 0.24), ("Total", 0.13), ("Ship", 0.11)]
+    _titled_table(pdf, ctx, lb, "Orders & Sales", cols, n_rows=20, zebra=True)
+    _titled_table(pdf, ctx, rb, "Orders & Sales (cont.)", cols, n_rows=20,
+                  zebra=True)
+
+
+def _inventory_supplies(pdf: FPDF, ctx: PageContext) -> None:
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    _titled_table(pdf, ctx, lb, "Product Inventory",
+                  [("Product", 0.34), ("SKU", 0.18), ("In Stock", 0.16),
+                   ("Reorder At", 0.16), ("Cost", 0.16)], n_rows=20, zebra=True)
+    _titled_table(pdf, ctx, rb, "Supplies & Materials",
+                  [("Supply", 0.36), ("Vendor", 0.26), ("Qty", 0.14),
+                   ("Reorder", 0.24)], n_rows=20, zebra=True)
+
+
+def _product_launch(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    lsecs = lb.split_v([0.16, 0.84], gap=7)
+    labelled_box(pdf, theme, lsecs[0], "Product · Launch Date · Price",
+                 lines_spacing=8.0)
+    for sec, ph in zip(lsecs[1].split_v([0.5, 0.5], gap=7),
+                       ("Develop", "Prep & Photograph")):
+        y = section_label(pdf, theme, sec.x, sec.y, ph, underline_w=sec.w)
+        checkbox_lines(pdf, theme, Panel(sec.x, y, sec.w, sec.y2 - y),
+                       spacing=8.2)
+    for sec, ph in zip(rb.split_v([0.5, 0.5], gap=7),
+                       ("Launch Day", "Post-Launch Follow-Up")):
+        y = section_label(pdf, theme, sec.x, sec.y, ph, underline_w=sec.w)
+        checkbox_lines(pdf, theme, Panel(sec.x, y, sec.w, sec.y2 - y),
+                       spacing=8.4)
+
+
+def _marketing_planner(pdf: FPDF, ctx: PageContext) -> None:
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+    y = section_label(pdf, theme, lb.x, lb.y, "Content Calendar",
+                      underline_w=lb.w)
+    grid = Panel(lb.x, y + 3, lb.w, lb.y2 - y - 3)
+    days = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    n_cols, n_rows = 7, 5
+    cw = grid.w / n_cols
+    header_h = 6.0
+    ch = (grid.h - header_h) / n_rows
+    band = theme.band_fill()
+    if band is not None:
+        pdf.set_fill_color(*band)
+        pdf.rect(grid.x, grid.y, grid.w, header_h, style="F")
+    theme.set_type(pdf, "inline_label", size=5.6)
+    pdf.set_text_color(*theme.band_text_c())
+    for i, d in enumerate(days):
+        pdf.set_xy(grid.x + i * cw, grid.y)
+        pdf.cell(cw, header_h, d.upper(), align="C")
+    gr = theme.rule_c()
+    pdf.set_draw_color(*gr)
+    pdf.set_line_width(0.2)
+    for r in range(n_rows + 1):
+        ry = grid.y + header_h + r * ch
+        pdf.line(grid.x, ry, grid.x2, ry)
+    for c in range(n_cols + 1):
+        x = grid.x + c * cw
+        pdf.line(x, grid.y, x, grid.y2)
+    pdf.set_draw_color(*theme.border_c())
+    pdf.set_line_width(0.3)
+    pdf.rect(grid.x, grid.y, grid.w, grid.h, style="D")
+    rsecs = rb.split_v([0.5, 0.5], gap=7)
+    _titled_table(pdf, ctx, rsecs[0], "Post Planner",
+                  [("Date", 0.16), ("Platform", 0.2), ("Content / Caption", 0.44),
+                   ("Done", 0.2)], n_rows=10, zebra=True)
+    rb2 = rsecs[1].split_v([0.5, 0.5], gap=6)
+    labelled_box(pdf, theme, rb2[0], "Hashtag & Keyword Bank",
+                 lines_spacing=8.0)
+    y = section_label(pdf, theme, rb2[1].x, rb2[1].y, "This Month's Metrics",
+                      underline_w=rb2[1].w)
+    table(pdf, theme, Panel(rb2[1].x, y, rb2[1].w, rb2[1].y2 - y),
+          [("Platform", 0.34), ("Followers", 0.22), ("Reach", 0.22),
+           ("Sales", 0.22)], n_rows=4)
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -1154,4 +1970,46 @@ RENDERERS: dict[str, Callable[[FPDF, PageContext], None]] = {
     "parent_contacts": _parent_contacts,
     "meeting_notes": _meeting_notes,
     "curriculum_overview": _curriculum_overview,
+    # travel
+    "trip_overview": _trip_overview,
+    "itinerary": _itinerary,
+    "packing_list": _packing_list,
+    "travel_budget": _travel_budget,
+    "accommodation": _accommodation,
+    "travel_journal": _travel_journal,
+    # wedding
+    "wedding_overview": _wedding_overview,
+    "wedding_timeline": _wedding_timeline,
+    "wedding_budget": _wedding_budget,
+    "vendor_tracker": _vendor_tracker,
+    "guest_list": _guest_list,
+    "seating_chart": _seating_chart,
+    # meal & recipe
+    "weekly_menu": _weekly_menu,
+    "grocery_list": _grocery_list,
+    "recipe_card": _recipe_card,
+    "pantry_inventory": _pantry_inventory,
+    "meal_prep": _meal_prep,
+    "recipe_wishlist": _recipe_wishlist,
+    # self-care
+    "self_care_routine": _self_care_routine,
+    "mood_tracker": _mood_tracker,
+    "self_care_habits": _self_care_habits,
+    "gratitude_reflection": _gratitude_reflection,
+    "sleep_log": _sleep_log,
+    "affirmations": _affirmations,
+    # home management
+    "household_info": _household_info,
+    "cleaning_schedule": _cleaning_schedule,
+    "chore_chart": _chore_chart,
+    "home_maintenance": _home_maintenance,
+    "bills_budget": _bills_budget,
+    "home_meal_grocery": _home_meal_grocery,
+    # small business
+    "biz_overview": _biz_overview,
+    "income_expense": _income_expense,
+    "order_tracker": _order_tracker,
+    "inventory_supplies": _inventory_supplies,
+    "product_launch": _product_launch,
+    "marketing_planner": _marketing_planner,
 }

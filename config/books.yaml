@@ -120,16 +120,38 @@ book_params:
     pets:
       label: "Pet Pals"
       characters: [cat, dog, hamster]
+    arctic_animals:
+      label: "Arctic Friends"
+      characters: [penguin, seal, polar_bear]
+    jungle_animals:
+      label: "Jungle Friends"
+      characters: [elephant, lion, monkey]
+    pond_friends:
+      label: "Pond Pals"
+      characters: [frog, duck]
+    cozy_animals:
+      label: "Cozy Critters"
+      characters: [panda, koala, deer, raccoon]
+    mythical:
+      label: "Magical Friends"
+      characters: [unicorn, dragon, dino]
 
   # Which settings suit each theme (a fish strolling through a city reads
-  # wrong; ocean friends stay on the beach).
+  # wrong; ocean friends stay in the water).  New sceneries are slotted onto
+  # the themes they read right for (ocean -> underwater/pond; forest -> jungle/
+  # meadow/campsite; everyone can visit the park/playground/meadow).
   theme_settings:
-    fruits: [garden, farm, park, school, city, zoo]
-    vegetables: [garden, farm, school, park]
-    forest_animals: [forest, park, zoo, garden]
-    farm_animals: [farm, garden, school]
-    ocean: [beach]
-    pets: [park, city, school, garden, beach]
+    fruits: [garden, farm, park, school, city, zoo, meadow, playground, bakery]
+    vegetables: [garden, farm, school, park, meadow, bakery]
+    forest_animals: [forest, park, zoo, garden, jungle, meadow, campsite, mountains, pond, playground]
+    farm_animals: [farm, garden, school, meadow, pond, playground]
+    ocean: [beach, underwater, pond]
+    pets: [park, city, school, garden, beach, playground, meadow]
+    arctic_animals: [snow, mountains, underwater, pond]
+    jungle_animals: [jungle, zoo, forest, meadow, mountains]
+    pond_friends: [pond, meadow, garden, park, forest]
+    cozy_animals: [forest, meadow, garden, campsite, jungle, park, mountains]
+    mythical: [castle, meadow, forest, space, jungle]
 
   # Alliterative name pool per character key.
   character_names:
@@ -160,8 +182,25 @@ book_params:
     cat: [Cleo, Casey]
     dog: [Duke, Daisy]
     hamster: [Hank, Holly]
+    penguin: [Pip, Pearl]
+    seal: [Sunny, Sable]
+    polar_bear: [Pax, Pola]
+    elephant: [Ellie, Eli]
+    lion: [Leo, Lulu]
+    monkey: [Milo, Mango]
+    frog: [Freddie, Fern]
+    duck: [Dilly, Dot]
+    panda: [Pao, Peony]
+    koala: [Kai, Kora]
+    deer: [Dewey, Dahlia]
+    raccoon: [Rocky, Rosie]
+    unicorn: [Uma, Una]
+    dragon: [Drake, Dara]
+    dino: [Dandy, Dot]
 
-  settings: [park, forest, zoo, city, farm, beach, school, garden]
+  settings: [park, forest, zoo, city, farm, beach, school, garden,
+             jungle, mountains, snow, space, underwater, desert,
+             pond, meadow, castle, playground, campsite, bakery]
 
   morals:
     - kindness

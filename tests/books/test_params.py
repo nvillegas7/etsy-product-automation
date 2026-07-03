@@ -55,8 +55,8 @@ def test_respects_allowed_themes(book_params_cfg):
         p = pick_book_params(niche_cfg, existing=[], seed=s)
         assert p["character_theme"] == "ocean"
         assert p["character_key"] in book_params_cfg["themes"]["ocean"]["characters"]
-        # ocean characters only ever appear at the beach
-        assert p["setting"] == "beach"
+        # ocean characters only ever appear in water-y settings
+        assert p["setting"] in {"beach", "underwater", "pond"}
 
 
 def test_respects_preferred_morals():

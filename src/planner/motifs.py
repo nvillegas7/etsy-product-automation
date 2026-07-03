@@ -1318,6 +1318,573 @@ class FocusMotif(_IconMotif):
              _i_dotcluster)
 
 
+# ===========================================================================
+# Travel line-icons (suitcase / airplane / map-pin / compass / camera / globe)
+# ===========================================================================
+
+def _i_suitcase(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bw, bh = r * 1.5, r * 1.2
+    by = cy - bh * 0.34
+    bx = cx - bw / 2
+    pdf.rect(bx, by, bw, bh, style="D", round_corners=True,
+             corner_radius=r * 0.2)
+    # inverted-U handle sitting on the top edge
+    hw, hh = r * 0.36, r * 0.26
+    pdf.arc(cx - hw, by - hh, hw * 2, 180, 360, b=hh * 2, style="D")
+    # a horizontal seam splitting lid from base + two latch dots
+    pdf.line(bx, by + bh * 0.42, bx + bw, by + bh * 0.42)
+    pdf.set_fill_color(*mark_c)
+    for sx in (-1, 1):
+        pdf.circle(cx + sx * r * 0.42, by + bh * 0.42, r * 0.1, style="F")
+
+
+def _i_airplane(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    # fuselage (top-view, nose up)
+    fw = r * 0.2
+    pdf.ellipse(cx - fw, cy - r * 0.92, fw * 2, r * 1.84, style="D")
+    # swept-back main wings
+    for sx in (-1, 1):
+        pdf.polygon([(cx + sx * fw * 0.4, cy - r * 0.2),
+                     (cx + sx * r * 0.9, cy + r * 0.34),
+                     (cx + sx * fw * 0.4, cy + r * 0.16)], style="D")
+    # swept tail fins
+    for sx in (-1, 1):
+        pdf.polygon([(cx + sx * fw * 0.3, cy + r * 0.5),
+                     (cx + sx * r * 0.34, cy + r * 0.78),
+                     (cx + sx * fw * 0.3, cy + r * 0.72)], style="D")
+
+
+def _i_mappin(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    hy = cy - r * 0.25
+    rr = r * 0.56
+    tip = (cx, cy + r)
+    # two straight flanks meeting the tip + a domed top arc
+    pdf.line(tip[0], tip[1], cx - rr, hy)
+    pdf.line(tip[0], tip[1], cx + rr, hy)
+    pdf.arc(cx - rr, hy - rr, rr * 2, 180, 360, style="D")
+    pdf.circle(cx, hy, rr * 0.42, style="D")   # inner hole
+
+
+def _i_compass(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rr = r * 0.86
+    pdf.circle(cx, cy, rr, style="D")
+    # N-pointing diamond needle: north half filled, south half open
+    n = (cx, cy - r * 0.56)
+    s = (cx, cy + r * 0.56)
+    e = (cx + r * 0.22, cy)
+    w = (cx - r * 0.22, cy)
+    pdf.set_fill_color(*mark_c)
+    pdf.polygon([n, e, w], style="F")
+    pdf.polygon([s, e, w], style="D")
+    pdf.set_fill_color(*line_c)
+    pdf.circle(cx, cy, r * 0.08, style="F")
+
+
+def _i_camera(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bw, bh = r * 1.6, r * 1.04
+    by = cy - bh * 0.3
+    bx = cx - bw / 2
+    # viewfinder bump on the top edge
+    pdf.rect(cx - r * 0.52, by - r * 0.22, r * 0.5, r * 0.22, style="D")
+    pdf.rect(bx, by, bw, bh, style="D", round_corners=True,
+             corner_radius=r * 0.14)
+    ly = by + bh * 0.52
+    pdf.circle(cx, ly, r * 0.42, style="D")
+    pdf.circle(cx, ly, r * 0.22, style="D")
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx + bw * 0.34, by + bh * 0.2, r * 0.1, style="F")   # flash
+
+
+def _i_globe(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rr = r * 0.85
+    pdf.circle(cx, cy, rr, style="D")
+    mw = rr * 0.46
+    pdf.ellipse(cx - mw, cy - rr, mw * 2, rr * 2, style="D")   # meridian
+    pdf.line(cx - rr, cy, cx + rr, cy)                         # equator
+    off = rr * 0.5
+    hw = (rr * rr - off * off) ** 0.5
+    pdf.line(cx - hw, cy - off, cx + hw, cy - off)             # upper latitude
+    pdf.line(cx - hw, cy + off, cx + hw, cy + off)             # lower latitude
+
+
+class TravelMotif(_IconMotif):
+    name = "travel"
+    ICONS = (_i_suitcase, _i_airplane, _i_mappin, _i_compass, _i_camera,
+             _i_globe)
+
+
+# ===========================================================================
+# Wedding line-icons (rings / cake / flutes / heart / arch / envelope)
+# ===========================================================================
+
+def _i_rings(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rr = r * 0.52
+    off = r * 0.4
+    pdf.circle(cx - off, cy + r * 0.1, rr, style="D")
+    pdf.circle(cx + off, cy + r * 0.1, rr, style="D")
+    # a little solitaire gem on the right ring's crown
+    pdf.set_fill_color(*mark_c)
+    gy = cy + r * 0.1 - rr
+    pdf.polygon([(cx + off, gy - r * 0.2), (cx + off + r * 0.12, gy),
+                 (cx + off, gy + r * 0.06), (cx + off - r * 0.12, gy)],
+                style="F")
+
+
+def _i_cake(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    tiers = ((1.4, cy + r * 0.3, r * 0.5),
+             (1.0, cy - r * 0.2, r * 0.5),
+             (0.64, cy - r * 0.66, r * 0.46))
+    for wf, top, h in tiers:
+        w = r * wf
+        pdf.rect(cx - w / 2, top, w, h, style="D", round_corners=True,
+                 corner_radius=r * 0.08)
+    # candle + flame topper
+    pdf.line(cx, cy - r * 0.66, cx, cy - r * 0.9)
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, cy - r * 0.96, r * 0.1, style="F")
+
+
+def _i_flutes(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    for sx, tilt in ((-1, -0.16), (1, 0.16)):
+        fx = cx + sx * r * 0.42
+        tx = fx + tilt * r         # bowl centre drifts outward (a toast)
+        bw = r * 0.34
+        stem_top = (fx, cy + r * 0.08)
+        pdf.polygon([(tx - bw / 2, cy - r * 0.72), (tx + bw / 2, cy - r * 0.72),
+                     stem_top], style="D")               # tapered bowl
+        pdf.line(stem_top[0], stem_top[1], fx, cy + r * 0.62)   # stem
+        pdf.line(fx - r * 0.2, cy + r * 0.62, fx + r * 0.2, cy + r * 0.62)  # foot
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, cy - r * 0.5, r * 0.08, style="F")    # a rising bubble
+
+
+def _i_heart(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    lr = r * 0.4
+    ty = cy - r * 0.15
+    tip = (cx, cy + r * 0.82)
+    pdf.arc(cx - 2 * lr, ty - lr, 2 * lr, 180, 360, style="D")   # left lobe
+    pdf.arc(cx, ty - lr, 2 * lr, 180, 360, style="D")            # right lobe
+    pdf.line(cx - 2 * lr, ty, tip[0], tip[1])
+    pdf.line(cx + 2 * lr, ty, tip[0], tip[1])
+
+
+def _i_arch(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pw = r * 0.55
+    base_y = cy + r * 0.85
+    shoulder = cy - r * 0.2
+    pdf.line(cx - pw, base_y, cx - pw, shoulder)
+    pdf.line(cx + pw, base_y, cx + pw, shoulder)
+    pdf.arc(cx - pw, shoulder - pw, pw * 2, 180, 360, style="D")   # crown
+    # a few floral buds nestled on the crown
+    pdf.set_fill_color(*mark_c)
+    for a in (215, 250, 290, 325):
+        rad = math.radians(a)
+        px = cx + math.cos(rad) * pw
+        py = (shoulder) + math.sin(rad) * pw
+        pdf.circle(px, py, r * 0.09, style="F")
+
+
+def _i_envelope(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    w, h = r * 1.5, r * 1.02
+    x0, y0 = cx - w / 2, cy - h / 2
+    pdf.rect(x0, y0, w, h, style="D")
+    pdf.line(x0, y0, cx, cy + h * 0.06)      # flap left
+    pdf.line(x0 + w, y0, cx, cy + h * 0.06)  # flap right
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, cy + h * 0.06, r * 0.1, style="F")   # wax seal
+
+
+class WeddingMotif(_IconMotif):
+    name = "wedding"
+    ICONS = (_i_rings, _i_cake, _i_flutes, _i_heart, _i_arch, _i_envelope)
+
+
+# ===========================================================================
+# Meal / recipe line-icons (chef-hat / fork+knife / pot / whisk / plate /
+# grocery-basket)
+# ===========================================================================
+
+def _i_chefhat(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    # band
+    bw, bh = r * 1.0, r * 0.34
+    pdf.rect(cx - bw / 2, cy + r * 0.2, bw, bh, style="D", round_corners=True,
+             corner_radius=r * 0.06)
+    # puffy top: three overlapping discs
+    pdf.circle(cx, cy - r * 0.28, r * 0.44, style="D")
+    pdf.circle(cx - r * 0.4, cy - r * 0.02, r * 0.32, style="D")
+    pdf.circle(cx + r * 0.4, cy - r * 0.02, r * 0.32, style="D")
+
+
+def _i_forkknife(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    piv = (cx, cy + r * 0.35)
+    with pdf.rotation(angle=-15, x=piv[0], y=piv[1]):
+        fx = cx - r * 0.2
+        pdf.line(fx, cy + r * 0.82, fx, cy - r * 0.22)          # shaft
+        for tx in (fx - r * 0.16, fx, fx + r * 0.16):
+            pdf.line(tx, cy - r * 0.22, tx, cy - r * 0.72)      # tines
+        pdf.line(fx - r * 0.16, cy - r * 0.22, fx + r * 0.16, cy - r * 0.22)
+    with pdf.rotation(angle=15, x=piv[0], y=piv[1]):
+        kx = cx + r * 0.2
+        pdf.line(kx, cy + r * 0.82, kx, cy + r * 0.04)          # handle
+        pdf.polygon([(kx, cy + r * 0.04), (kx + r * 0.15, cy - r * 0.28),
+                     (kx + r * 0.1, cy - r * 0.6), (kx, cy - r * 0.72)],
+                    style="D")                                  # blade
+
+
+def _i_pot(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    top, bot = cy - r * 0.06, cy + r * 0.72
+    pdf.polygon([(cx - r * 0.64, top), (cx + r * 0.64, top),
+                 (cx + r * 0.5, bot), (cx - r * 0.5, bot)], style="D")  # body
+    # bracket handles either side of the rim
+    for sx in (-1, 1):
+        ex = cx + sx * r * 0.64
+        hx = cx + sx * r * 0.86
+        pdf.line(ex, top + r * 0.04, hx, top + r * 0.04)
+        pdf.line(hx, top + r * 0.04, hx, top + r * 0.24)
+        pdf.line(hx, top + r * 0.24, ex, top + r * 0.24)
+    # lid: rim line + central knob
+    pdf.line(cx - r * 0.7, top, cx + r * 0.7, top)
+    pdf.line(cx, top, cx, top - r * 0.18)
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, top - r * 0.22, r * 0.09, style="F")
+
+
+def _i_whisk(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    y_top, y_bot = cy - r * 0.12, cy + r * 0.82
+    pdf.line(cx, cy - r * 0.86, cx, y_top)          # handle
+    for amp in (-0.42, -0.15, 0.15, 0.42):
+        pts = []
+        for i in range(13):
+            t = i / 12
+            pts.append((cx + amp * r * math.sin(math.pi * t),
+                        y_top + (y_bot - y_top) * t))
+        pdf.polyline(pts, style="D")                # balloon wires
+
+
+def _i_plate(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.circle(cx, cy, r * 0.85, style="D")
+    pdf.circle(cx, cy, r * 0.55, style="D")
+
+
+def _i_basket(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    top, bot = cy - r * 0.08, cy + r * 0.74
+    pdf.polygon([(cx - r * 0.7, top), (cx + r * 0.7, top),
+                 (cx + r * 0.46, bot), (cx - r * 0.46, bot)], style="D")
+    pdf.arc(cx - r * 0.5, top - r * 0.5, r, 180, 360, style="D")   # handle
+    # weave grid
+    for sx in (-0.32, 0.0, 0.32):
+        pdf.line(cx + sx * r, top, cx + sx * r * 0.78, bot)
+    pdf.line(cx - r * 0.6, cy + r * 0.32, cx + r * 0.6, cy + r * 0.32)
+
+
+class MealMotif(_IconMotif):
+    name = "meal_recipe"
+    ICONS = (_i_chefhat, _i_forkknife, _i_pot, _i_whisk, _i_plate, _i_basket)
+
+
+# ===========================================================================
+# Self-care line-icons (lotus / crescent+stars / candle / teacup / water-drop
+# / leaf)
+# ===========================================================================
+
+def _petal(pdf, base, ang_deg, length, width):
+    """One pointed lotus petal growing from *base* at *ang_deg* off vertical."""
+    a = math.radians(ang_deg)
+    ux, uy = math.sin(a), -math.cos(a)        # up-ish direction
+    px, py = -uy, ux                          # perpendicular
+    tip = (base[0] + ux * length, base[1] + uy * length)
+    ml = (base[0] + ux * length * 0.5 + px * width,
+          base[1] + uy * length * 0.5 + py * width)
+    mr = (base[0] + ux * length * 0.5 - px * width,
+          base[1] + uy * length * 0.5 - py * width)
+    pdf.polygon([base, ml, tip, mr], style="D")
+
+
+def _i_lotus(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    base = (cx, cy + r * 0.6)
+    for ang, ln in ((-52, r * 1.0), (-26, r * 1.2), (0, r * 1.35),
+                    (26, r * 1.2), (52, r * 1.0)):
+        _petal(pdf, base, ang, ln, r * 0.2)
+    # a little waterline the blossom rests on
+    pdf.line(cx - r * 0.7, cy + r * 0.66, cx + r * 0.7, cy + r * 0.66)
+
+
+def _i_moonstars(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    R = r * 0.72
+    off = r * 0.52
+    xh = off / 2.0
+    yh = (R * R - xh * xh) ** 0.5
+    fu = math.degrees(math.atan2(yh, xh))      # horn half-angle
+    # crescent = outer convex arc of circle O + inner concave arc of circle I;
+    # both circles share radius R so the arcs meet exactly at the two horns.
+    pdf.arc(cx - R, cy - R, R * 2, fu, 360 - fu, style="D")            # outer
+    pdf.arc(cx + off - R, cy - R, R * 2, 180 - fu, 180 + fu, style="D")  # inner
+    # little stars nestled in the opening
+    pdf.set_fill_color(*mark_c)
+    for sx, sy, sr in ((0.62, -0.5, 0.1), (0.86, 0.02, 0.07),
+                       (0.54, 0.42, 0.08)):
+        pdf.circle(cx + sx * r, cy + sy * r, sr * r, style="F")
+
+
+def _i_candle(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bw, bh = r * 0.52, r * 1.1
+    top = cy - r * 0.26
+    pdf.rect(cx - bw / 2, top, bw, bh, style="D", round_corners=True,
+             corner_radius=r * 0.1)
+    pdf.line(cx, top, cx, top - r * 0.14)      # wick
+    # flame teardrop
+    pdf.set_fill_color(*mark_c)
+    pdf.polygon([(cx, top - r * 0.72), (cx + r * 0.15, top - r * 0.3),
+                 (cx, top - r * 0.12), (cx - r * 0.15, top - r * 0.3)],
+                style="F")
+
+
+def _i_teacup(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rb = r * 0.56
+    rim = cy - r * 0.05
+    pdf.arc(cx - rb, rim - rb, rb * 2, 0, 180, style="D")   # bowl (lower half)
+    pdf.line(cx - rb, rim, cx + rb, rim)                    # rim
+    # handle bracket on the right
+    hx = cx + rb
+    pdf.line(hx, rim + r * 0.08, hx + r * 0.28, rim + r * 0.08)
+    pdf.line(hx + r * 0.28, rim + r * 0.08, hx + r * 0.28, rim + r * 0.4)
+    pdf.line(hx + r * 0.28, rim + r * 0.4, hx, rim + r * 0.4)
+    # saucer
+    pdf.line(cx - r * 0.74, rim + rb + r * 0.06,
+             cx + r * 0.74, rim + rb + r * 0.06)
+    # two steam curls
+    for sx in (-0.2, 0.2):
+        pts = [(cx + sx * r + 0.06 * r * math.sin(math.pi * i / 3),
+                rim - r * 0.18 - i * r * 0.12) for i in range(4)]
+        pdf.polyline(pts, style="D")
+
+
+def _i_waterdrop(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rb = r * 0.55
+    bcy = cy + r * 0.22
+    tip = (cx, cy - r * 0.82)
+    pdf.line(tip[0], tip[1], cx - rb, bcy)
+    pdf.line(tip[0], tip[1], cx + rb, bcy)
+    pdf.arc(cx - rb, bcy - rb, rb * 2, 0, 180, style="D")   # round bottom
+
+
+def _i_leaf(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    with pdf.rotation(angle=-35, x=cx, y=cy):
+        a_tip = (cx, cy - r * 0.82)
+        b_base = (cx, cy + r * 0.82)
+        amp = r * 0.4
+        left = [(cx - amp * math.sin(math.pi * i / 12),
+                 a_tip[1] + (b_base[1] - a_tip[1]) * i / 12) for i in range(13)]
+        right = [(cx + amp * math.sin(math.pi * (12 - i) / 12),
+                  b_base[1] - (b_base[1] - a_tip[1]) * i / 12)
+                 for i in range(13)]
+        pdf.polygon(left + right, style="D")
+        pdf.line(a_tip[0], a_tip[1], b_base[0], b_base[1])   # midrib
+        for t in (0.35, 0.55, 0.75):
+            my = a_tip[1] + (b_base[1] - a_tip[1]) * t
+            vw = amp * math.sin(math.pi * t) * 0.7
+            pdf.line(cx, my, cx - vw, my + vw * 0.5)
+            pdf.line(cx, my, cx + vw, my + vw * 0.5)
+        # short stem past the base
+        pdf.line(b_base[0], b_base[1], b_base[0], b_base[1] + r * 0.28)
+
+
+class SelfCareMotif(_IconMotif):
+    name = "self_care"
+    ICONS = (_i_lotus, _i_moonstars, _i_candle, _i_teacup, _i_waterdrop,
+             _i_leaf)
+
+
+# ===========================================================================
+# Home-management line-icons (house / potted-plant / broom / spray-bottle /
+# key / clock)
+# ===========================================================================
+
+def _i_house(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    wall_top = cy - r * 0.04
+    pdf.rect(cx - r * 0.55, wall_top, r * 1.1, r * 0.88, style="D")   # walls
+    pdf.polygon([(cx - r * 0.72, wall_top), (cx, cy - r * 0.78),
+                 (cx + r * 0.72, wall_top)], style="D")               # roof
+    pdf.rect(cx - r * 0.16, cy + r * 0.36, r * 0.32, r * 0.48,
+             style="D")                                               # door
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx + r * 0.08, cy + r * 0.6, r * 0.05, style="F")      # knob
+
+
+def _i_plant(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rim = cy + r * 0.24
+    pdf.polygon([(cx - r * 0.45, rim), (cx + r * 0.45, rim),
+                 (cx + r * 0.3, cy + r * 0.84),
+                 (cx - r * 0.3, cy + r * 0.84)], style="D")           # pot
+    pdf.line(cx - r * 0.5, rim, cx + r * 0.5, rim)                    # pot rim
+    base = (cx, cy + r * 0.18)
+    for ang, ln in ((-36, r * 0.82), (0, r * 0.98), (36, r * 0.82)):
+        _petal(pdf, base, ang, ln, r * 0.16)                         # leaves
+
+
+def _i_broom(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.line(cx, cy - r * 0.85, cx, cy + r * 0.14)                   # handle
+    pdf.polygon([(cx - r * 0.28, cy + r * 0.14), (cx + r * 0.28, cy + r * 0.14),
+                 (cx + r * 0.44, cy + r * 0.82),
+                 (cx - r * 0.44, cy + r * 0.82)], style="D")         # bristles
+    pdf.line(cx - r * 0.28, cy + r * 0.3, cx + r * 0.28, cy + r * 0.3)  # band
+    for f in (-0.6, -0.2, 0.2, 0.6):
+        pdf.line(cx + f * r * 0.28, cy + r * 0.3,
+                 cx + f * r * 0.44, cy + r * 0.82)                   # strands
+
+
+def _i_spraybottle(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.rect(cx - r * 0.32, cy - r * 0.04, r * 0.64, r * 0.92, style="D",
+             round_corners=True, corner_radius=r * 0.1)              # body
+    pdf.rect(cx - r * 0.18, cy - r * 0.26, r * 0.36, r * 0.22, style="D")  # neck
+    pdf.polygon([(cx - r * 0.18, cy - r * 0.26), (cx - r * 0.6, cy - r * 0.26),
+                 (cx - r * 0.6, cy - r * 0.14),
+                 (cx - r * 0.18, cy - r * 0.14)], style="D")         # nozzle
+    pdf.line(cx - r * 0.18, cy - r * 0.02, cx - r * 0.42, cy + r * 0.16)  # trigger
+    pdf.line(cx - r * 0.32, cy + r * 0.5, cx + r * 0.32, cy + r * 0.5)    # label
+    pdf.set_fill_color(*mark_c)
+    for dx, dy in ((-0.78, -0.34), (-0.82, -0.18), (-0.72, -0.02)):
+        pdf.circle(cx + dx * r, cy + dy * r, r * 0.05, style="F")    # spray
+
+
+def _i_key(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    ringx = cx - r * 0.42
+    pdf.circle(ringx, cy, r * 0.36, style="D")
+    pdf.circle(ringx, cy, r * 0.15, style="D")                      # bow hole
+    pdf.line(ringx + r * 0.36, cy, cx + r * 0.78, cy)              # shaft
+    pdf.line(cx + r * 0.48, cy, cx + r * 0.48, cy + r * 0.24)      # tooth
+    pdf.line(cx + r * 0.68, cy, cx + r * 0.68, cy + r * 0.32)      # tooth
+
+
+def _i_clock(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rr = r * 0.82
+    pdf.circle(cx, cy, rr, style="D")
+    for a in (0, 90, 180, 270):
+        rad = math.radians(a)
+        pdf.line(cx + math.cos(rad) * rr * 0.82,
+                 cy + math.sin(rad) * rr * 0.82,
+                 cx + math.cos(rad) * rr * 0.96,
+                 cy + math.sin(rad) * rr * 0.96)                    # ticks
+    pdf.line(cx, cy, cx, cy - rr * 0.6)                            # minute hand
+    pdf.line(cx, cy, cx + rr * 0.42, cy + rr * 0.16)              # hour hand
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, cy, r * 0.07, style="F")
+
+
+class HomeMotif(_IconMotif):
+    name = "home_management"
+    ICONS = (_i_house, _i_plant, _i_broom, _i_spraybottle, _i_key, _i_clock)
+
+
+# ===========================================================================
+# Small-business line-icons (briefcase / growth-chart / lightbulb / laptop /
+# rocket / pie-chart) -- reuses :func:`_i_bulb`.
+# ===========================================================================
+
+def _i_briefcase(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bw, bh = r * 1.5, r * 1.04
+    top = cy - r * 0.14
+    pdf.rect(cx - bw / 2, top, bw, bh, style="D", round_corners=True,
+             corner_radius=r * 0.12)
+    hw, hh = r * 0.28, r * 0.24
+    pdf.arc(cx - hw, top - hh, hw * 2, 180, 360, b=hh * 2, style="D")  # handle
+    pdf.line(cx - bw / 2, cy + r * 0.14, cx + bw / 2, cy + r * 0.14)   # seam
+    pdf.rect(cx - r * 0.1, cy + r * 0.05, r * 0.2, r * 0.18, style="D")  # clasp
+
+
+def _i_growth(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    # L-axes
+    pdf.line(cx - r * 0.72, cy - r * 0.7, cx - r * 0.72, cy + r * 0.6)
+    pdf.line(cx - r * 0.72, cy + r * 0.6, cx + r * 0.78, cy + r * 0.6)
+    # rising trend line + arrowhead
+    pts = [(cx - r * 0.5, cy + r * 0.28), (cx - r * 0.12, cy - r * 0.1),
+           (cx + r * 0.18, cy + r * 0.06), (cx + r * 0.6, cy - r * 0.5)]
+    pdf.polyline(pts, style="D")
+    ex, ey = pts[-1]
+    pdf.line(ex, ey, ex - r * 0.34, ey + r * 0.06)
+    pdf.line(ex, ey, ex - r * 0.06, ey + r * 0.34)
+
+
+def _i_laptop(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    sw, sh = r * 1.1, r * 0.66
+    stop = cy - r * 0.5
+    pdf.rect(cx - sw / 2, stop, sw, sh, style="D", round_corners=True,
+             corner_radius=r * 0.06)                              # screen
+    pdf.rect(cx - sw / 2 + r * 0.1, stop + r * 0.1, sw - r * 0.2, sh - r * 0.2,
+             style="D")                                           # inner glass
+    pdf.polygon([(cx - r * 0.78, cy + r * 0.34), (cx + r * 0.78, cy + r * 0.34),
+                 (cx + r * 0.58, cy + r * 0.16),
+                 (cx - r * 0.58, cy + r * 0.16)], style="D")      # base
+    pdf.line(cx - r * 0.14, cy + r * 0.25, cx + r * 0.14, cy + r * 0.25)  # pad
+
+
+def _i_rocket(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bw = r * 0.6
+    btop, bbot = cy - r * 0.34, cy + r * 0.5
+    pdf.polygon([(cx, cy - r * 0.86), (cx - bw / 2, btop),
+                 (cx + bw / 2, btop)], style="D")                 # nose cone
+    pdf.rect(cx - bw / 2, btop, bw, bbot - btop, style="D")       # body
+    for sx in (-1, 1):
+        ex = cx + sx * bw / 2
+        pdf.polygon([(ex, cy + r * 0.14), (ex + sx * r * 0.3, cy + r * 0.62),
+                     (ex, cy + r * 0.5)], style="D")              # fins
+    pdf.circle(cx, cy - r * 0.02, r * 0.15, style="D")           # window
+    _pen(pdf, mark_c, lw)
+    for fx in (-0.16, 0.0, 0.16):
+        pdf.line(cx + fx * r, bbot, cx + fx * r * 0.5, cy + r * 0.78)  # exhaust
+
+
+def _i_piechart(pdf, cx, cy, r, line_c, mark_c, lw):
+    rr = r * 0.8
+    pdf.set_fill_color(*mark_c)
+    pdf.solid_arc(cx - rr, cy - rr, rr * 2, 300, 360, style="F")  # highlighted slice
+    _pen(pdf, line_c, lw)
+    pdf.circle(cx, cy, rr, style="D")
+    for a in (300, 360):
+        rad = math.radians(a)
+        pdf.line(cx, cy, cx + math.cos(rad) * rr, cy + math.sin(rad) * rr)
+
+
+class BusinessMotif(_IconMotif):
+    name = "small_business"
+    ICONS = (_i_briefcase, _i_growth, _i_bulb, _i_laptop, _i_rocket,
+             _i_piechart)
+
+
 MOTIFS: dict[str, MotifFamily] = {
     "botanical": BotanicalMotif(),
     "geometric": GeometricMotif(),
@@ -1329,11 +1896,19 @@ MOTIFS: dict[str, MotifFamily] = {
     "finance": FinanceMotif(),
     "teaching": TeachingMotif(),
     "focus": FocusMotif(),
+    "travel": TravelMotif(),
+    "wedding": WeddingMotif(),
+    "meal_recipe": MealMotif(),
+    "self_care": SelfCareMotif(),
+    "home_management": HomeMotif(),
+    "small_business": BusinessMotif(),
 }
 
 # The container-style token per motif lives in ``styles.CONTAINERS`` (consumed
 # by the widgets).  The five themed line-icon families use the crisp
 # ``squared_hairline`` container.  This module owns its motif vocabulary, so it
 # registers the tokens here (idempotent) rather than editing styles.py.
-for _themed in ("fitness", "academic", "finance", "teaching", "focus"):
+for _themed in ("fitness", "academic", "finance", "teaching", "focus",
+                "travel", "wedding", "meal_recipe", "self_care",
+                "home_management", "small_business"):
     CONTAINERS.setdefault(_themed, "squared_hairline")

@@ -231,3 +231,285 @@ niches:
       - id: curriculum_overview
         label: "Curriculum Overview"
         tab: "CURRICULUM"
+
+  travel:
+    name: "Travel Planner"
+    theme_motif: "travel"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    seed_keywords:
+      - "travel planner printable"
+      - "vacation planner"
+      - "itinerary template"
+      - "packing checklist"
+      - "travel budget tracker"
+      - "road trip planner"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "ocean_blue"
+      - "patina_blue"
+      - "sage_linen"
+      - "classic_boho"
+    subtitle: "Stress-free trip organizer from packing to bucket list"
+    features:
+      - "Day-by-day itinerary"
+      - "Packing checklists"
+      - "Travel budget tracker"
+      - "Trip journal"
+    niche_pages:
+      - id: trip_overview
+        label: "Trip Overview"
+        tab: "TRIP"
+      - id: itinerary
+        label: "Daily Itinerary"
+        tab: "DAYS"
+      - id: packing_list
+        label: "Packing List"
+        tab: "PACKING"
+      - id: travel_budget
+        label: "Travel Budget"
+        tab: "BUDGET"
+      - id: accommodation
+        label: "Stays & Transport"
+        tab: "STAYS"
+      - id: travel_journal
+        label: "Travel Journal"
+        tab: "JOURNAL"
+
+  wedding:
+    name: "Wedding Planner"
+    theme_motif: "wedding"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    seed_keywords:
+      - "wedding planner printable"
+      - "wedding binder"
+      - "wedding checklist"
+      - "wedding budget planner"
+      - "seating chart template"
+      - "wedding vendor list"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "blush_butter"
+      - "soft_sage"
+      - "patina_blue"
+      - "dusty_rose"
+    subtitle: "Engagement-to-honeymoon organizer for the big day"
+    features:
+      - "Countdown timeline"
+      - "Budget breakdown"
+      - "Vendor & guest tracker"
+      - "Seating chart"
+    niche_pages:
+      - id: wedding_overview
+        label: "Wedding Overview"
+        tab: "OVERVIEW"
+      - id: wedding_timeline
+        label: "Countdown Timeline"
+        tab: "TIMELINE"
+      - id: wedding_budget
+        label: "Budget Breakdown"
+        tab: "BUDGET"
+      - id: vendor_tracker
+        label: "Vendor Tracker"
+        tab: "VENDORS"
+      - id: guest_list
+        label: "Guest List"
+        tab: "GUESTS"
+      - id: seating_chart
+        label: "Seating Chart"
+        tab: "SEATING"
+
+  meal_recipe:
+    name: "Meal & Recipe Planner"
+    theme_motif: "meal_recipe"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    seed_keywords:
+      - "meal planner printable"
+      - "weekly menu planner"
+      - "grocery list printable"
+      - "recipe book template"
+      - "meal prep planner"
+      - "recipe cards"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "terracotta_clay"
+      - "sage_linen"
+      - "dusty_adobe"
+      - "blush_butter"
+    subtitle: "Weekly menus, grocery lists, and a build-your-own recipe book"
+    features:
+      - "Weekly menu grid"
+      - "Categorized grocery list"
+      - "Recipe cards"
+      - "Pantry inventory"
+    niche_pages:
+      - id: weekly_menu
+        label: "Weekly Menu"
+        tab: "MENU"
+      - id: grocery_list
+        label: "Grocery List"
+        tab: "GROCERY"
+      - id: recipe_card
+        label: "Recipe Cards"
+        tab: "RECIPES"
+      - id: pantry_inventory
+        label: "Pantry & Freezer"
+        tab: "PANTRY"
+      - id: meal_prep
+        label: "Meal Prep Plan"
+        tab: "PREP"
+      - id: recipe_wishlist
+        label: "Recipes to Try"
+        tab: "WISHLIST"
+
+  self_care:
+    name: "Self-Care Planner"
+    theme_motif: "self_care"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    seed_keywords:
+      - "self care planner"
+      - "wellness planner printable"
+      - "mood tracker"
+      - "mental health journal"
+      - "self care checklist"
+      - "anxiety tracker"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "lavender_haze"
+      - "mint_cream"
+      - "dusty_rose"
+      - "soft_sage"
+    subtitle: "Mood, habits, and gentle routines for mental wellness"
+    features:
+      - "Mood tracker"
+      - "Self-care routines"
+      - "Gratitude prompts"
+      - "Sleep & energy log"
+    niche_pages:
+      - id: self_care_routine
+        label: "Self-Care Routine"
+        tab: "ROUTINE"
+      - id: mood_tracker
+        label: "Mood Tracker"
+        tab: "MOOD"
+      - id: self_care_habits
+        label: "Habit Tracker"
+        tab: "HABITS"
+      - id: gratitude_reflection
+        label: "Gratitude & Reflection"
+        tab: "GRATITUDE"
+      - id: sleep_log
+        label: "Sleep & Energy Log"
+        tab: "SLEEP"
+      - id: affirmations
+        label: "Affirmations"
+        tab: "AFFIRM"
+
+  home_management:
+    name: "Home Management Planner"
+    theme_motif: "home_management"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    seed_keywords:
+      - "home management binder"
+      - "household planner printable"
+      - "cleaning schedule"
+      - "chore chart"
+      - "family command center"
+      - "home organization"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "patina_blue"
+      - "sage_linen"
+      - "neutral_beige"
+      - "soft_sage"
+    subtitle: "Run the whole household -- cleaning, meals, maintenance, bills"
+    features:
+      - "Cleaning schedule"
+      - "Family chore chart"
+      - "Seasonal maintenance"
+      - "Bills & budget"
+    niche_pages:
+      - id: household_info
+        label: "Household Info"
+        tab: "HOME"
+      - id: cleaning_schedule
+        label: "Cleaning Schedule"
+        tab: "CLEANING"
+      - id: chore_chart
+        label: "Chore Chart"
+        tab: "CHORES"
+      - id: home_maintenance
+        label: "Home Maintenance"
+        tab: "MAINTAIN"
+      - id: bills_budget
+        label: "Bills & Budget"
+        tab: "BILLS"
+      - id: home_meal_grocery
+        label: "Meals & Grocery"
+        tab: "MEALS"
+
+  small_business:
+    name: "Small Business Planner"
+    theme_motif: "small_business"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    seed_keywords:
+      - "small business planner"
+      - "business planner printable"
+      - "etsy seller planner"
+      - "income expense tracker"
+      - "order tracker"
+      - "boss babe planner"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "blush_butter"
+      - "charcoal_minimal"
+      - "mint_cream"
+      - "modern_minimal"
+    subtitle: "Run and grow your shop -- sales, orders, content, finances"
+    features:
+      - "Income & expense tracker"
+      - "Order & sales log"
+      - "Inventory tracker"
+      - "Content calendar"
+    niche_pages:
+      - id: biz_overview
+        label: "Business Overview"
+        tab: "BIZ"
+      - id: income_expense
+        label: "Income & Expenses"
+        tab: "FINANCES"
+      - id: order_tracker
+        label: "Order Tracker"
+        tab: "ORDERS"
+      - id: inventory_supplies
+        label: "Inventory & Supplies"
+        tab: "INVENTORY"
+      - id: product_launch
+        label: "Product Launch"
+        tab: "PRODUCTS"
+      - id: marketing_planner
+        label: "Social & Marketing"
+        tab: "MARKETING"

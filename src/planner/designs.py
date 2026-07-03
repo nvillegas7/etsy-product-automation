@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 Shell = Literal["binder", "cards", "flat", "poster"]
 Interior = Literal["boxed", "columns", "hourly", "airy"]
 Motif = Literal["botanical", "geometric", "celestial", "coastal", "minimal",
-                "fitness", "academic", "finance", "teaching", "focus"]
+                "fitness", "academic", "finance", "teaching", "focus",
+                "travel", "wedding", "meal_recipe", "self_care",
+                "home_management", "small_business"]
 Voice = Literal["classic", "serif", "grotesk", "script", "typewriter"]
 Ink = Literal["soft-wash", "ink-on-paper", "filled-blocks", "accent-pop"]
 Cover = Literal["arch", "band", "editorial", "pattern"]
@@ -41,7 +43,9 @@ DIMENSIONS: dict[str, tuple[str, ...]] = {
     "shell": ("binder", "cards", "flat", "poster"),
     "interior": ("boxed", "columns", "hourly", "airy"),
     "motif": ("botanical", "geometric", "celestial", "coastal", "minimal",
-              "fitness", "academic", "finance", "teaching", "focus"),
+              "fitness", "academic", "finance", "teaching", "focus",
+              "travel", "wedding", "meal_recipe", "self_care",
+              "home_management", "small_business"),
     "voice": ("classic", "serif", "grotesk", "script", "typewriter"),
     "ink": ("soft-wash", "ink-on-paper", "filled-blocks", "accent-pop"),
     "cover": ("arch", "band", "editorial", "pattern"),
