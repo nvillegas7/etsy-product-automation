@@ -15,6 +15,7 @@ import yaml
 
 from src.monitoring.metrics import PipelineMetrics
 from src.pipeline.state import ProductStateMachine
+from src.planner.styles import humanize
 from src.storage.models import Niche, Product, ProductState
 from src.storage.repository import (
     NicheRepository,
@@ -268,7 +269,7 @@ class PipelineOrchestrator:
             niche_record = niche_repo.get_by_slug(niche_slug)
             if niche_record is None:
                 niche_record = niche_repo.create(
-                    name=niche_cfg.get("name", niche_slug),
+                    name=niche_cfg.get("name") or humanize(niche_slug),
                     slug=niche_slug,
                     seed_keywords=niche_cfg.get("seed_keywords", []),
                 )
@@ -282,7 +283,11 @@ class PipelineOrchestrator:
             if product_type == "picture_book":
                 params = self._pick_book_params(niche_cfg, session)
                 palette_name = params.get("art_palette", "storybook")
-                display_title = params.get("display_title", niche_cfg.get("name", niche_slug))
+                display_title = (
+                    params.get("display_title")
+                    or niche_cfg.get("name")
+                    or humanize(niche_slug)
+                )
             else:
                 design_name = self._select_design(session)
                 params = self._design_params(design_name) if design_name else None
@@ -304,12 +309,12 @@ class PipelineOrchestrator:
                         niche_cfg, niche_record.id, session, design=design_name
                     )
                     palettes = [palette_name]
-                display_title = f"{year} {niche_cfg.get('name', niche_slug)}"
+                display_title = f"{year} {niche_cfg.get('name') or humanize(niche_slug)}"
 
             product = product_repo.create(
                 niche_id=niche_record.id,
                 product_type=product_type,
-                title=niche_cfg.get("name", niche_slug),  # placeholder, SEO updates later
+                title=niche_cfg.get("name") or humanize(niche_slug),  # placeholder, SEO updates later
                 display_title=display_title,
                 palette_name=palette_name,
                 palettes=json.dumps(palettes) if palettes else None,
@@ -456,7 +461,7 @@ class PipelineOrchestrator:
 
             # Build a minimal spec dict for the generator
             spec = self._build_planner_spec(
-                title=niche_cfg.get("name", niche_slug),
+                title=niche_cfg.get("name") or humanize(niche_slug),
                 subtitle=niche_cfg.get("subtitle", ""),
                 palette_name=palette_name,
                 year=year,
@@ -568,7 +573,7 @@ class PipelineOrchestrator:
         for slug, cfg in niches_config.items():
             if niche_repo.get_by_slug(slug) is None:
                 niche_repo.create(
-                    name=cfg.get("name", slug),
+                    name=cfg.get("name") or humanize(slug),
                     slug=slug,
                     seed_keywords=cfg.get("seed_keywords", []),
                 )
@@ -914,7 +919,11 @@ class PipelineOrchestrator:
         if ListingSEOCls is not None:
             try:
                 seo = ListingSEOCls()
-                niche_name = niche_cfg.get("name", "Planner")
+                niche_name = (
+                    niche_cfg.get("name")
+                    or humanize(niche_cfg.get("slug", ""))
+                    or "Planner"
+                )
                 keywords = [kw for kw, _ in scored_keywords[:10]]
                 title = seo.generate_title(
                     niche_name=niche_name,
@@ -1028,7 +1037,11 @@ class PipelineOrchestrator:
         niche_cfg: dict, year: int, scored_keywords: list[tuple[str, float]]
     ) -> tuple[str, str, list[str]]:
         """Generate basic SEO data without the ListingSEO module."""
-        name = niche_cfg.get("name", "Digital Planner")
+        name = (
+            niche_cfg.get("name")
+            or humanize(niche_cfg.get("slug", ""))
+            or "Digital Planner"
+        )
         subtitle = niche_cfg.get("subtitle", "")
         features = niche_cfg.get("features", [])
 
@@ -1142,7 +1155,11 @@ class PipelineOrchestrator:
         bundle_dir = _PROJECT_ROOT / self.config.get("paths", {}).get(
             "bundle_dir", "output/bundles"
         )
-        name = niche_cfg.get("name", "Planner")
+        name = (
+            niche_cfg.get("name")
+            or humanize(niche_cfg.get("slug", ""))
+            or "Planner"
+        )
         base = re.sub(r"[^A-Za-z0-9]+", "_", f"{product.year}_{name}").strip("_")
         arcnames = [f"{base}_{palette}.pdf" for palette in palettes]
         out_zip = bundle_dir / f"product_{product.id}_bundle.zip"
@@ -1163,7 +1180,7 @@ class PipelineOrchestrator:
 
         spec = self._build_planner_spec(
             title=product.title,
-            display_title=product.display_title or f"{product.year} {niche_cfg.get('name', 'Planner')}",
+            display_title=product.display_title or f"{product.year} {niche_cfg.get('name') or humanize(niche_cfg.get('slug', '')) or 'Planner'}",
             subtitle=niche_cfg.get("subtitle", ""),
             palette_name=palette_name or product.palette_name,
             year=product.year,

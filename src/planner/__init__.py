@@ -10,7 +10,13 @@ from src.planner.designs import (
     validate_design,
 )
 from src.planner.generator import PlannerGenerator, PlannerSpec
-from src.planner.styles import ColorPalette, FontConfig, get_palette, get_palettes
+from src.planner.styles import (
+    ColorPalette,
+    FontConfig,
+    get_palette,
+    get_palettes,
+    humanize,
+)
 
 __all__ = [
     "ColorPalette",
@@ -24,6 +30,7 @@ __all__ = [
     "get_design",
     "get_palette",
     "get_palettes",
+    "humanize",
     "resolve_design",
     "validate_design",
 ]

@@ -38,7 +38,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.planner.designs import DIMENSIONS, PRESET_PALETTES, PRESETS
 from src.planner.generator import PlannerGenerator, PlannerSpec
-from src.planner.styles import get_palettes
+from src.planner.styles import get_palettes, humanize
 
 
 def _print_themes() -> None:
@@ -171,7 +171,9 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
 
-    title = args.title if args.title else f"{args.year} Planner"
+    # Fall back to a HUMANIZED slug ("fitness_planner" -> "Fitness Planner")
+    # so a raw underscore-slug can never leak onto the cover as the title.
+    title = args.title or f"{args.year} {humanize(args.slug) or 'Planner'}"
     include_weekly = args.weekly and not args.no_weekly
 
     # Derive a friendly display title / subtitle from the niche config

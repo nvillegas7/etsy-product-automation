@@ -13,6 +13,7 @@ The :class:`Theme` bundles palette + fonts + the resolved
 """
 
 import logging
+import re
 import urllib.request
 import zipfile
 from dataclasses import dataclass, field
@@ -282,6 +283,26 @@ VOICES: dict[str, dict[str, RoleSpec]] = {
         "cover_subtitle": _v("courier", "", 9),
     },
 }
+
+
+def humanize(slug: str | None) -> str:
+    """Turn a raw slug/key into human-readable Title Case text.
+
+    ``"fitness_planner"`` -> ``"Fitness Planner"``; ``"self-care"`` ->
+    ``"Self Care"``.  Replaces underscores and hyphens with spaces,
+    collapses runs of whitespace, and Title-Cases each word (digits pass
+    through untouched, so ``"2026"`` stays ``"2026"``).  Tolerates
+    already-clean input and empty / ``None`` (returns ``""``).
+
+    This is the single guard that keeps raw underscore-slugs (which scream
+    "auto-generated") out of any rendered planner/book title, label, or
+    subtitle whenever a human "name" isn't supplied.
+    """
+    if not slug:
+        return ""
+    text = re.sub(r"[_\-]+", " ", str(slug))
+    text = re.sub(r"\s+", " ", text).strip()
+    return " ".join(w if w.isdigit() else w.capitalize() for w in text.split(" "))
 
 
 def apply_case(case: str, s: str) -> str:
