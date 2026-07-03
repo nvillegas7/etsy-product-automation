@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Product Studio{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="{{ url_for('index') }}">
+        <span class="brand-dot"></span>Product Studio
+      </a>
+      {# The primary (dark) generate action follows the active type filter:
+         with the picture-book filter on, the emphasized button posts
+         type=picture_book. #}
+      {% set active_ptype = request.args.get('ptype', 'all') %}
+      <div class="topbar-actions">
+        <form method="post" action="{{ url_for('generate') }}" class="inline-form">
+          <input type="hidden" name="type" value="planner">
+          <button type="submit"
+                  class="btn {% if active_ptype == 'picture_book' %}btn-outline{% else %}btn-dark{% endif %}">
+            + Generate planner
+          </button>
+        </form>
+        <form method="post" action="{{ url_for('generate') }}" class="inline-form">
+          <input type="hidden" name="type" value="picture_book">
+          <button type="submit"
+                  class="btn {% if active_ptype == 'picture_book' %}btn-dark{% else %}btn-outline{% endif %}">
+            + Generate picture book
+          </button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="toasts" id="toasts">
+        {% for category, message in messages %}
+          <div class="toast toast-{{ category }}">
+            <span class="toast-text">{{ message }}</span>
+            <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

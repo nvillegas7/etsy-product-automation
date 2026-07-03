@@ -1,0 +1,65 @@
+# Main configuration for Etsy Planner Bot
+
+pipeline:
+  cadence_seconds: 60     # 1 product per minute (demo mode)
+  max_products_per_day: 100
+  enabled: true
+
+planner:
+  page_width_mm: 294.2   # iPad Pro 12.9" landscape at 72dpi
+  page_height_mm: 392.3  # iPad Pro 12.9" portrait
+  max_file_size_mb: 20
+  include_daily_pages: false  # Set true if file size allows
+  year: 2026
+  # When true (default) each planner product bundles a curated set of 3-4
+  # palettes (all pre-generated, delivered as one ZIP). Set false to fall
+  # back to single-palette planners (one rotated palette, no bundle zip).
+  palette_bundle: true
+
+pricing:
+  default_price_usd: 5.99
+  book_price_usd: 4.99
+  min_price_usd: 3.99
+  max_price_usd: 14.99
+
+etsy:
+  upload_enabled: false   # Disabled until API approval
+  # Publish to Etsy immediately when a reviewer approves a product —
+  # approval IS the manual gate. Only takes effect while uploads are
+  # enabled (upload_enabled true, credentials present, and the
+  # ETSY_UPLOAD_ENABLED kill switch not set to false); if the publish
+  # attempt fails the product stays APPROVED so the manual Publish
+  # button works as a retry.
+  publish_on_approve: true
+  shop_name: ""
+  taxonomy_id: null
+  listing_type: "download"
+  who_made: "i_did"
+  when_made: "2020_2025"
+  is_digital: true
+  shipping_profile_id: null
+
+paths:
+  output_dir: "output/planners"
+  book_output_dir: "output/books"
+  mockup_dir: "output/mockups"
+  bundle_dir: "output/bundles"
+  preview_dir: "output/previews"
+  database: "data/planner.db"
+  fonts_dir: "src/planner/fonts"
+
+dashboard:
+  host: "127.0.0.1"
+  port: 5001
+
+rate_limits:
+  etsy_requests_per_second: 5   # Your app limit
+  etsy_requests_per_day: 5000   # Your app limit
+  trends_delay_seconds: 60
+
+research:
+  # Skip live trends API for local runs — use random niche selection
+  use_live_trends: false
+  trend_cache_ttl_hours: 24
+  min_trend_score: 30
+  max_recently_published_days: 7

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Product Studio — Products{% endblock %}
+
+{% block content %}
+  <div class="chips" role="navigation" aria-label="State filters">
+    {% for key, label, count in chips %}
+      <a class="chip chip-{{ key }} {% if state_filter == key %}chip-active{% endif %}"
+         href="{{ url_for('index', state=key, ptype=ptype_filter) }}">
+        {{ label }}<span class="chip-count">{{ count }}</span>
+      </a>
+    {% endfor %}
+  </div>
+
+  <div class="filter-row">
+    <span class="filter-label">Type</span>
+    {% for key, label in [('all', 'All'), ('planner', 'Planners'), ('picture_book', 'Picture books')] %}
+      <a class="type-filter {% if ptype_filter == key %}type-filter-active{% endif %}"
+         href="{{ url_for('index', state=state_filter, ptype=key) }}">{{ label }}</a>
+    {% endfor %}
+    {% if generation_running %}
+      <span class="gen-running">Generation running…</span>
+    {% endif %}
+  </div>
+
+  {% if views %}
+    <div class="grid">
+      {% for v in views %}
+        {% set p = v.product %}
+        <article class="card">
+          <a class="thumb" href="{{ url_for('product_detail', product_id=p.id) }}">
+            {% if v.thumb_index is not none %}
+              <img src="{{ url_for('serve_mockup', product_id=p.id, idx=v.thumb_index) }}"
+                   alt="Mockup for {{ v.title }}" loading="lazy">
+            {% else %}
+              <div class="thumb-missing">
+                <span class="thumb-missing-icon">&#9633;</span>
+                <span>File missing</span>
+              </div>
+            {% endif %}
+          </a>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="type-badge type-{{ p.product_type }}">{{ v.type_label }}</span>
+              <span class="badge badge-{{ v.badge_class }}">{{ v.state_label }}</span>
+            </div>
+            <h3 class="card-title">
+              <a href="{{ url_for('product_detail', product_id=p.id) }}">{{ v.title }}</a>
+            </h3>
+            <p class="card-meta">
+              {% if v.niche_name %}{{ v.niche_name }} · {% endif %}{{ p.palette_name.replace('_', ' ') }}{% if v.is_bundle %} <span class="colors-tag">{{ v.color_count }} colors</span>{% endif %}{% if v.params.design %} · {{ v.params.design }}{% endif %}
+            </p>
+            {% if v.params_summary %}
+              <p class="card-params">{{ v.params_summary }}</p>
+            {% endif %}
+            <p class="card-meta-sub">
+              ${{ '%.2f' % p.price_usd }} · {{ p.created_at.strftime('%b %-d, %Y') if p.created_at else '—' }}
+            </p>
+            {% if p.state == ProductState.REVIEW_PENDING %}
+              <div class="card-actions">
+                <form method="post" action="{{ url_for('approve', product_id=p.id) }}" class="inline-form">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  <button type="submit" class="btn btn-green btn-sm">Approve</button>
+                </form>
+                <form method="post" action="{{ url_for('reject', product_id=p.id) }}" class="inline-form">
+                  <input type="hidden" name="next" value="{{ request.full_path }}">
+                  <button type="submit" class="btn btn-rose-outline btn-sm">Reject</button>
+                </form>
+              </div>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <p class="empty-title">No products yet</p>
+      <p class="empty-sub">Click <strong>Generate planner</strong> or <strong>Generate picture book</strong>
+        in the top bar to start a pipeline run, or clear the filters above.</p>
+    </div>
+  {% endif %}
+{% endblock %}

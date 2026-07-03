@@ -1,0 +1,267 @@
+# Picture-book product line configuration.
+#
+# Two top-level keys:
+#   niches      - book niches merged into the global niche registry by the
+#                 orchestrator (each carries product_type: picture_book).
+#   book_params - the full parameter space consumed by src/books/params.py
+#                 and src/books/generator.py.
+
+niches:
+  kids_book_animals:
+    name: "Children's Animal Story Book"
+    subtitle: "Adorable animal friends learning life's big little lessons"
+    product_type: picture_book
+    seed_keywords:
+      - "kids picture book"
+      - "animal story book"
+      - "printable kids book"
+      - "bedtime story pdf"
+      - "childrens book printable"
+      - "toddler story book"
+    modifiers:
+      - "printable"
+      - "pdf"
+      - "digital"
+      - "instant download"
+      - "bedtime"
+    features:
+      - "Full-color illustrated story pages"
+      - "4 bonus coloring pages"
+      - "'This book belongs to' personalization page"
+      - "Print at home or read on any tablet"
+    allowed_themes:
+      - forest_animals
+      - farm_animals
+      - ocean
+      - pets
+
+  kids_book_fruits_veggies:
+    name: "Fruit & Veggie Friends Story Book"
+    subtitle: "Cheerful fruit and veggie pals with a lesson in every bite"
+    product_type: picture_book
+    seed_keywords:
+      - "fruit picture book"
+      - "veggie story book"
+      - "food friends book"
+      - "kids story printable"
+      - "healthy eating book kids"
+      - "cute kids book pdf"
+    modifiers:
+      - "printable"
+      - "pdf"
+      - "digital"
+      - "instant download"
+      - "preschool"
+    features:
+      - "Full-color illustrated story pages"
+      - "4 bonus coloring pages"
+      - "'This book belongs to' personalization page"
+      - "Gentle moral woven into every story"
+    allowed_themes:
+      - fruits
+      - vegetables
+    preferred_settings:
+      - garden
+      - farm
+      - park
+      - school
+
+  kids_book_bedtime:
+    name: "Bedtime Moral Story Book"
+    subtitle: "Gentle wind-down stories that end with a warm lesson"
+    product_type: picture_book
+    seed_keywords:
+      - "bedtime story book"
+      - "moral stories kids"
+      - "bedtime story printable"
+      - "calm kids story pdf"
+      - "goodnight book toddler"
+      - "short bedtime stories"
+    modifiers:
+      - "printable"
+      - "pdf"
+      - "digital"
+      - "instant download"
+      - "toddler"
+    features:
+      - "Soothing full-page illustrations"
+      - "4 bonus coloring pages"
+      - "'This book belongs to' personalization page"
+      - "A clearly-stated lesson page to talk about together"
+    allowed_themes:
+      - forest_animals
+      - pets
+      - ocean
+      - fruits
+    preferred_morals:
+      - kindness
+      - honesty
+      - patience
+      - gratitude
+      - obedience
+
+book_params:
+  themes:
+    fruits:
+      label: "Fruit Friends"
+      characters: [apple, banana, strawberry, orange, pear, watermelon]
+    vegetables:
+      label: "Veggie Friends"
+      characters: [carrot, broccoli, tomato, corn, pea_pod]
+    forest_animals:
+      label: "Forest Friends"
+      characters: [fox, bunny, bear, owl, hedgehog]
+    farm_animals:
+      label: "Farm Friends"
+      characters: [cow, pig, chick, sheep]
+    ocean:
+      label: "Ocean Friends"
+      characters: [octopus, turtle, crab, fish]
+    pets:
+      label: "Pet Pals"
+      characters: [cat, dog, hamster]
+
+  # Which settings suit each theme (a fish strolling through a city reads
+  # wrong; ocean friends stay on the beach).
+  theme_settings:
+    fruits: [garden, farm, park, school, city, zoo]
+    vegetables: [garden, farm, school, park]
+    forest_animals: [forest, park, zoo, garden]
+    farm_animals: [farm, garden, school]
+    ocean: [beach]
+    pets: [park, city, school, garden, beach]
+
+  # Alliterative name pool per character key.
+  character_names:
+    apple: [Abby, Archie]
+    banana: [Benny, Bibi]
+    strawberry: [Stella, Sadie]
+    orange: [Ollie, Opal]
+    pear: [Penny, Percy]
+    watermelon: [Wally, Willow]
+    carrot: [Cody, Clara]
+    broccoli: [Bruno, Bree]
+    tomato: [Tommy, Tilly]
+    corn: [Cora, Corey]
+    pea_pod: [Pippa, Pete]
+    fox: [Felix, Fiona]
+    bunny: [Bella, Bobby]
+    bear: [Barnaby, Bonnie]
+    owl: [Oliver, Olive]
+    hedgehog: [Henry, Hazel]
+    cow: [Coco, Clover]
+    pig: [Poppy, Pablo]
+    chick: [Charlie, Chloe]
+    sheep: [Shelly, Sammy]
+    octopus: [Ozzy, Octavia]
+    turtle: [Toby, Tessa]
+    crab: [Casper, Coral]
+    fish: [Finn, Flora]
+    cat: [Cleo, Casey]
+    dog: [Duke, Daisy]
+    hamster: [Hank, Holly]
+
+  settings: [park, forest, zoo, city, farm, beach, school, garden]
+
+  morals:
+    - kindness
+    - honesty
+    - sharing
+    - patience
+    - courage
+    - obedience
+    - politeness
+    - gratitude
+    - teamwork
+    - perseverance
+
+  age_bands: ["2-4", "4-6", "6-8"]
+  narrative_styles: [prose, rhyme]
+  page_counts: [12, 16]
+
+  # Kid-friendly art palettes.  All keys are hex colors.
+  palettes:
+    sunny_day:
+      name: "Sunny Day"
+      sky_top: "#8ED8F2"
+      sky_bottom: "#DFF6FD"
+      sun: "#FFD35C"
+      cloud: "#FFFFFF"
+      hill: "#B9E48A"
+      ground: "#9FD86B"
+      ground_dark: "#7CBF4E"
+      water: "#5FC5DE"
+      accent: "#FF9F4A"
+      accent2: "#FF7B9C"
+      panel: "#FFFFFF"
+      text: "#4A3B57"
+    sunset_glow:
+      name: "Sunset Glow"
+      sky_top: "#FDAE7B"
+      sky_bottom: "#FFE5B8"
+      sun: "#FFDD87"
+      cloud: "#FFF3E0"
+      hill: "#D89A6A"
+      ground: "#A8BE62"
+      ground_dark: "#87A048"
+      water: "#F2A66B"
+      accent: "#E76F51"
+      accent2: "#A06CB8"
+      panel: "#FFF8EF"
+      text: "#54355A"
+    spring_meadow:
+      name: "Spring Meadow"
+      sky_top: "#A9E3E0"
+      sky_bottom: "#E5F8F0"
+      sun: "#FFE08A"
+      cloud: "#FFFFFF"
+      hill: "#AEDD8A"
+      ground: "#A5D96C"
+      ground_dark: "#82BC4E"
+      water: "#7BD0CB"
+      accent: "#F7A6C4"
+      accent2: "#FFD166"
+      panel: "#FFFFFF"
+      text: "#3E5641"
+    ocean_breeze:
+      name: "Ocean Breeze"
+      sky_top: "#9AD6EE"
+      sky_bottom: "#E2F5FB"
+      sun: "#FFE08A"
+      cloud: "#FFFFFF"
+      hill: "#BFE6D2"
+      ground: "#F2D8A0"
+      ground_dark: "#E3BE7C"
+      water: "#4FB8D4"
+      accent: "#FF8B6B"
+      accent2: "#2FA8A0"
+      panel: "#FFFFFF"
+      text: "#2F4858"
+    autumn_cozy:
+      name: "Autumn Cozy"
+      sky_top: "#FFD9A0"
+      sky_bottom: "#FFF0D4"
+      sun: "#FFC96B"
+      cloud: "#FFF6E8"
+      hill: "#E0A45E"
+      ground: "#D3A253"
+      ground_dark: "#B8853C"
+      water: "#8FB8B0"
+      accent: "#E07A3F"
+      accent2: "#B4552D"
+      panel: "#FFF9F0"
+      text: "#513A2A"
+    berry_sweet:
+      name: "Berry Sweet"
+      sky_top: "#E5C7EF"
+      sky_bottom: "#FBEAF6"
+      sun: "#FFE08A"
+      cloud: "#FFFFFF"
+      hill: "#C4A0DB"
+      ground: "#9BC46B"
+      ground_dark: "#7BA84E"
+      water: "#9C8BD6"
+      accent: "#C64C7B"
+      accent2: "#7B4CC6"
+      panel: "#FFFFFF"
+      text: "#4A2C4E"

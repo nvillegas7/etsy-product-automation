@@ -1,0 +1,217 @@
+# Niche definitions with seed keywords and preferred palettes
+
+niches:
+  adhd_planner:
+    name: "ADHD Planner"
+    seed_keywords:
+      - "adhd planner"
+      - "adhd daily planner"
+      - "neurodivergent planner"
+      - "executive function planner"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "soft_sage"
+      - "boho_pink"
+      - "neutral_beige"
+    subtitle: "Stay organized with a planner designed for ADHD minds"
+    features:
+      - "Brain dump sections"
+      - "Priority matrix"
+      - "Time blocking"
+      - "Habit tracker"
+    niche_pages:
+      - id: brain_dump
+        label: "Brain Dump"
+        tab: "DUMP"
+      - id: priority_matrix
+        label: "Priority Matrix"
+        tab: "PRIORITY"
+      - id: time_blocking
+        label: "Time Blocking"
+        tab: "BLOCKS"
+      - id: routine_builder
+        label: "Routine Builder"
+        tab: "ROUTINES"
+      - id: parking_lot
+        label: "Idea Parking Lot"
+        tab: "IDEAS"
+      - id: energy_tracker
+        label: "Energy Tracker"
+        tab: "ENERGY"
+
+  budget_planner:
+    name: "Budget Planner"
+    seed_keywords:
+      - "budget planner"
+      - "financial planner"
+      - "money tracker"
+      - "expense tracker"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "ocean_blue"
+      - "modern_minimal"
+      - "charcoal_minimal"
+    subtitle: "Take control of your finances with ease"
+    features:
+      - "Monthly budget overview"
+      - "Expense tracking"
+      - "Savings goals"
+      - "Bill payment tracker"
+    niche_pages:
+      - id: budget_overview
+        label: "Monthly Budget"
+        tab: "BUDGET"
+      - id: expense_log
+        label: "Expense Log"
+        tab: "EXPENSES"
+      - id: savings_goals
+        label: "Savings Goals"
+        tab: "SAVINGS"
+      - id: bill_tracker
+        label: "Bill Tracker"
+        tab: "BILLS"
+      - id: debt_tracker
+        label: "Debt Payoff"
+        tab: "DEBT"
+      - id: subscription_tracker
+        label: "Subscriptions"
+        tab: "SUBS"
+
+  student_planner:
+    name: "Student Planner"
+    seed_keywords:
+      - "student planner"
+      - "college planner"
+      - "academic planner"
+      - "study planner"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "dusty_rose"
+      - "boho_pink"
+      - "soft_sage"
+    subtitle: "Ace your semester with organized study planning"
+    features:
+      - "Assignment tracker"
+      - "Study schedule"
+      - "Grade tracker"
+      - "Project planner"
+    niche_pages:
+      - id: class_schedule
+        label: "Class Schedule"
+        tab: "CLASSES"
+      - id: assignment_tracker
+        label: "Assignments"
+        tab: "ASSIGN"
+      - id: exam_tracker
+        label: "Exam Tracker"
+        tab: "EXAMS"
+      - id: grade_log
+        label: "Grade Log"
+        tab: "GRADES"
+      - id: semester_goals
+        label: "Semester Goals"
+        tab: "SEMESTER"
+      - id: reading_list
+        label: "Reading List"
+        tab: "READING"
+
+  fitness_planner:
+    name: "Fitness Planner"
+    seed_keywords:
+      - "fitness planner"
+      - "workout planner"
+      - "gym planner"
+      - "exercise tracker"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "ocean_blue"
+      - "classic_boho"
+      - "soft_sage"
+    subtitle: "Crush your fitness goals with structured planning"
+    features:
+      - "Workout log"
+      - "Meal planner"
+      - "Progress tracker"
+      - "Body measurements"
+    niche_pages:
+      - id: workout_log
+        label: "Workout Log"
+        tab: "WORKOUT"
+      - id: measurements
+        label: "Measurements"
+        tab: "MEASURE"
+      - id: meal_planner
+        label: "Meal Planner"
+        tab: "MEALS"
+      - id: hydration_steps
+        label: "Water & Steps"
+        tab: "HYDRATE"
+      - id: progress_photos
+        label: "Progress Photos"
+        tab: "PHOTOS"
+      - id: personal_records
+        label: "Personal Records"
+        tab: "RECORDS"
+
+  teacher_planner:
+    name: "Teacher Planner"
+    seed_keywords:
+      - "teacher planner"
+      - "lesson planner"
+      - "classroom planner"
+      - "educator planner"
+    modifiers:
+      - "digital"
+      - "printable"
+      - "pdf"
+      - "ipad"
+      - "goodnotes"
+    preferred_palettes:
+      - "classic_boho"
+      - "neutral_beige"
+      - "dusty_rose"
+    subtitle: "Plan your school year with confidence"
+    features:
+      - "Lesson planning"
+      - "Grade book"
+      - "Student roster"
+      - "Meeting notes"
+    niche_pages:
+      - id: lesson_plan
+        label: "Lesson Plans"
+        tab: "LESSONS"
+      - id: grade_book
+        label: "Grade Book"
+        tab: "GRADES"
+      - id: student_roster
+        label: "Student Roster"
+        tab: "ROSTER"
+      - id: parent_contacts
+        label: "Parent Contact Log"
+        tab: "CONTACTS"
+      - id: meeting_notes
+        label: "Meeting Notes"
+        tab: "MEETINGS"
+      - id: curriculum_overview
+        label: "Curriculum Overview"
+        tab: "CURRICULUM"

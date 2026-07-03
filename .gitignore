@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+
+# Environment
+.env
+.venv/
+venv/
+
+# Output (generated products, regenerable)
+output/
+
+# Data (local runtime state)
+data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fonts (downloaded at runtime)
+src/planner/fonts/*.ttf
+src/books/fonts/*.ttf

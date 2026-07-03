@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}{{ view.title }} — Product Studio{% endblock %}
+
+{% block content %}
+  <nav class="breadcrumbs">
+    <a href="{{ url_for('index') }}">&larr; All products</a>
+  </nav>
+
+  <div class="detail-header">
+    <div>
+      <h1 class="detail-title">{{ view.title }}</h1>
+      <div class="detail-subline">
+        <span class="type-badge type-{{ p.product_type }}">{{ view.type_label }}</span>
+        <span class="badge badge-{{ view.badge_class }}">{{ view.state_label }}</span>
+        {% if view.niche_name %}<span class="detail-niche">{{ view.niche_name }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="detail-actions">
+      {% if view.pdf_available %}
+        <a class="btn btn-outline" href="{{ url_for('serve_pdf', product_id=p.id) }}" target="_blank" rel="noopener">Open PDF</a>
+      {% else %}
+        <span class="btn btn-disabled" title="PDF file not found on this machine">PDF missing</span>
+      {% endif %}
+      {% if view.is_bundle %}
+        {% if view.bundle_available %}
+          <a class="btn btn-outline" href="{{ url_for('serve_bundle', product_id=p.id) }}">Download bundle (.zip)</a>
+        {% else %}
+          <span class="btn btn-disabled" title="Bundle ZIP not found on this machine">Bundle missing</span>
+        {% endif %}
+      {% endif %}
+      {% if p.state == ProductState.APPROVED %}
+        <form method="post" action="{{ url_for('publish', product_id=p.id) }}" class="inline-form"
+              onsubmit="return confirm('Publish “{{ view.title }}” to Etsy?');">
+          <button type="submit" class="btn btn-blue">Publish to Etsy</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <div class="detail-left">
+      <section class="panel">
+        <h2 class="panel-title">Listing images</h2>
+        {% if view.mockup_indices %}
+          <div class="gallery">
+            {% for idx in view.mockup_indices %}
+              <a href="{{ url_for('serve_mockup', product_id=p.id, idx=idx) }}" target="_blank" rel="noopener">
+                <img class="gallery-img" src="{{ url_for('serve_mockup', product_id=p.id, idx=idx) }}"
+                     alt="Mockup {{ loop.index }} for {{ view.title }}" loading="lazy">
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="file-missing-note">Mockup images not found on this machine.</div>
+        {% endif %}
+      </section>
+
+      {% if view.is_bundle %}
+        <section class="panel">
+          <h2 class="panel-title">Color options <span class="color-count-badge">{{ view.color_count }} colors</span></h2>
+          <div class="palette-list">
+            {% for pal in view.palettes %}
+              <div class="palette-item{% if loop.first %} palette-item-hero{% endif %}">
+                <span class="palette-swatches">
+                  {% for c in pal.colors %}
+                    <span class="palette-swatch" style="background: {{ c }}"></span>
+                  {% endfor %}
+                </span>
+                <span class="palette-name">{{ pal.name }}{% if loop.first %} <span class="palette-hero-tag">hero</span>{% endif %}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="panel">
+        <h2 class="panel-title">Page previews</h2>
+        {% if preview_pages %}
+          <div class="preview-strip">
+            {% for page in preview_pages %}
+              <a class="preview-item" href="{{ url_for('serve_preview', product_id=p.id, page=page) }}"
+                 target="_blank" rel="noopener">
+                <img src="{{ url_for('serve_preview', product_id=p.id, page=page) }}"
+                     alt="Page {{ page }}" loading="lazy">
+                <span class="preview-label">p. {{ page }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="file-missing-note">No previews available — the PDF file was not found on this machine.</div>
+        {% endif %}
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Description</h2>
+        {% if p.description %}
+          <div class="description">{{ p.description }}</div>
+        {% else %}
+          <div class="file-missing-note">No description generated yet.</div>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="detail-right">
+      {% if p.state == ProductState.REVIEW_PENDING %}
+        <section class="panel panel-review">
+          <h2 class="panel-title">Review decision</h2>
+          <form method="post" class="review-form">
+            <input type="hidden" name="next" value="{{ url_for('product_detail', product_id=p.id) }}">
+            <label class="field-label" for="note">Note (optional)</label>
+            <textarea id="note" name="note" rows="3" placeholder="Why approve or reject?"></textarea>
+            <div class="review-buttons">
+              <button type="submit" class="btn btn-green"
+                      formaction="{{ url_for('approve', product_id=p.id) }}">Approve</button>
+              <button type="submit" class="btn btn-rose-outline"
+                      formaction="{{ url_for('reject', product_id=p.id) }}">Reject</button>
+            </div>
+          </form>
+        </section>
+      {% elif p.state == ProductState.APPROVED %}
+        <section class="panel panel-review">
+          <h2 class="panel-title">Approved</h2>
+          <p class="hint">Publish it from the button above, or change your mind:</p>
+          <form method="post" action="{{ url_for('reject', product_id=p.id) }}" class="review-form">
+            <input type="hidden" name="next" value="{{ url_for('product_detail', product_id=p.id) }}">
+            <label class="field-label" for="note">Note (optional)</label>
+            <textarea id="note" name="note" rows="2" placeholder="Reason for rejecting"></textarea>
+            <button type="submit" class="btn btn-rose-outline">Reject</button>
+          </form>
+        </section>
+      {% elif p.state == ProductState.REJECTED %}
+        <section class="panel panel-review">
+          <h2 class="panel-title">Rejected</h2>
+          <form method="post" action="{{ url_for('re_review', product_id=p.id) }}" class="review-form">
+            <input type="hidden" name="next" value="{{ url_for('product_detail', product_id=p.id) }}">
+            <button type="submit" class="btn btn-outline">Send back to review</button>
+          </form>
+        </section>
+      {% endif %}
+
+      <section class="panel">
+        <h2 class="panel-title">Listing metadata</h2>
+        <dl class="meta-list">
+          <dt>SEO title</dt>
+          <dd>{{ p.title }}</dd>
+          <dt>Price</dt>
+          <dd>${{ '%.2f' % p.price_usd }}</dd>
+          <dt>Palette</dt>
+          <dd>{{ p.palette_name.replace('_', ' ') }}</dd>
+          {% if view.params.design %}
+            <dt>Design theme</dt>
+            <dd>{{ view.params.design }}</dd>
+          {% endif %}
+          <dt>Year</dt>
+          <dd>{{ p.year }}</dd>
+          <dt>File size</dt>
+          <dd>{{ pdf_size | filesizeformat if pdf_size else '—' }}</dd>
+          <dt>State</dt>
+          <dd><span class="badge badge-{{ view.badge_class }}">{{ view.state_label }}</span></dd>
+          {% if listing and listing.etsy_url %}
+            <dt>Etsy listing</dt>
+            <dd><a href="{{ listing.etsy_url }}" target="_blank" rel="noopener">{{ listing.etsy_url }}</a></dd>
+          {% endif %}
+        </dl>
+      </section>
+
+      {% if view.tags %}
+        <section class="panel">
+          <h2 class="panel-title">Tags</h2>
+          <div class="tag-chips">
+            {% for tag in view.tags %}<span class="tag-chip">{{ tag }}</span>{% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      {% if view.params %}
+        <section class="panel">
+          <h2 class="panel-title">{{ 'Book parameters' if p.product_type == 'picture_book' else 'Design parameters' }}</h2>
+          <table class="params-table">
+            <tbody>
+              {% for key, value in view.params.items() %}
+                <tr>
+                  <th>{{ key.replace('_', ' ') }}</th>
+                  <td>{{ value }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      {% endif %}
+
+      <section class="panel">
+        <h2 class="panel-title">History</h2>
+        <dl class="meta-list">
+          <dt>Created</dt>
+          <dd>{{ p.created_at.strftime('%b %-d, %Y %H:%M') if p.created_at else '—' }}</dd>
+          <dt>Updated</dt>
+          <dd>{{ p.updated_at.strftime('%b %-d, %Y %H:%M') if p.updated_at else '—' }}</dd>
+          <dt>Reviewed</dt>
+          <dd>{{ p.reviewed_at.strftime('%b %-d, %Y %H:%M') if p.reviewed_at else '—' }}</dd>
+          {% if p.review_note %}
+            <dt>Review note</dt>
+            <dd class="review-note">{{ p.review_note }}</dd>
+          {% endif %}
+          {% if p.error_message %}
+            <dt>Error</dt>
+            <dd class="error-message">{{ p.error_message }}</dd>
+          {% endif %}
+        </dl>
+      </section>
+    </div>
+  </div>
+{% endblock %}

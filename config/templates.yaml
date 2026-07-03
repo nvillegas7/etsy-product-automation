@@ -1,0 +1,138 @@
+# Color palettes and font configurations
+
+palettes:
+  neutral_beige:
+    name: "Neutral Beige"
+    background: "#FAF6F1"
+    primary: "#8B7355"
+    secondary: "#C4A882"
+    accent: "#D4A574"
+    text: "#3D3024"
+    text_light: "#8B7355"
+    grid_line: "#E8DFD3"
+    tab_active: "#8B7355"
+    tab_inactive: "#E8DFD3"
+
+  soft_sage:
+    name: "Soft Sage"
+    background: "#F5F7F2"
+    primary: "#6B8F71"
+    secondary: "#A3C4A8"
+    accent: "#7BA382"
+    text: "#2D3B2E"
+    text_light: "#6B8F71"
+    grid_line: "#D8E4DA"
+    tab_active: "#6B8F71"
+    tab_inactive: "#D8E4DA"
+
+  dusty_rose:
+    name: "Dusty Rose"
+    background: "#FDF5F3"
+    primary: "#B5838D"
+    secondary: "#D4A5A5"
+    accent: "#C9929E"
+    text: "#3D2B2E"
+    text_light: "#B5838D"
+    grid_line: "#EDDBDB"
+    tab_active: "#B5838D"
+    tab_inactive: "#EDDBDB"
+
+  ocean_blue:
+    name: "Ocean Blue"
+    background: "#F2F7FA"
+    primary: "#4A7C8F"
+    secondary: "#89B5C4"
+    accent: "#5E9AAE"
+    text: "#1E3A44"
+    text_light: "#4A7C8F"
+    grid_line: "#D1E3EB"
+    tab_active: "#4A7C8F"
+    tab_inactive: "#D1E3EB"
+
+  charcoal_minimal:
+    name: "Charcoal Minimal"
+    background: "#F8F8F8"
+    primary: "#4A4A4A"
+    secondary: "#8A8A8A"
+    accent: "#6A6A6A"
+    text: "#2A2A2A"
+    text_light: "#6A6A6A"
+    grid_line: "#E0E0E0"
+    tab_active: "#4A4A4A"
+    tab_inactive: "#E0E0E0"
+
+  boho_pink:
+    name: "Boho Pink"
+    background: "#FFFFFF"
+    primary: "#FF385C"
+    secondary: "#FFB5C2"
+    accent: "#FF385C"
+    text: "#2D2D2D"
+    text_light: "#888888"
+    grid_line: "#E8E8E8"
+    tab_active: "#FF385C"
+    tab_inactive: "#F0F0F0"
+
+  classic_boho:
+    name: "Classic Boho"
+    background: "#FBF8F4"
+    primary: "#C4956A"
+    secondary: "#D4B896"
+    accent: "#B07D56"
+    text: "#3A2F27"
+    text_light: "#8B7D6B"
+    grid_line: "#E5DDD3"
+    tab_active: "#C4956A"
+    tab_inactive: "#EDE6DC"
+
+  modern_minimal:
+    name: "Modern Minimal"
+    background: "#FFFFFF"
+    primary: "#1A1A1A"
+    secondary: "#666666"
+    accent: "#FF385C"
+    text: "#1A1A1A"
+    text_light: "#999999"
+    grid_line: "#EBEBEB"
+    tab_active: "#1A1A1A"
+    tab_inactive: "#F5F5F5"
+
+fonts:
+  primary:
+    family: "Inter"
+    regular: "Inter-Regular.ttf"
+    bold: "Inter-Bold.ttf"
+    light: "Inter-Light.ttf"
+    source_url: "https://fonts.google.com/specimen/Inter"
+  # Serif display face for large titles (cover, page headers).
+  # Playfair Display static files are tried first; DM Serif Display is the
+  # reliable fallback that exists in the google/fonts repo.
+  display:
+    family: "PlannerDisplay"
+    regular: "DisplaySerif-Regular.ttf"
+    bold: "DisplaySerif-Bold.ttf"
+    candidates:
+      regular:
+        - "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/static/PlayfairDisplay-Regular.ttf"
+        - "https://raw.githubusercontent.com/google/fonts/main/ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf"
+      bold:
+        - "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/static/PlayfairDisplay-Bold.ttf"
+        - "https://raw.githubusercontent.com/google/fonts/main/ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf"
+  # Script accent face for month names / pennant flags.
+  script:
+    family: "PlannerScript"
+    regular: "ScriptAccent-Regular.ttf"
+    candidates:
+      regular:
+        - "https://raw.githubusercontent.com/google/fonts/main/ofl/greatvibes/GreatVibes-Regular.ttf"
+  sizes:
+    title: 36
+    subtitle: 18
+    heading: 14
+    body: 11
+    small: 9
+    tab: 8
+    display_title: 46
+    page_title: 19
+    section: 8.5
+    pennant: 15
