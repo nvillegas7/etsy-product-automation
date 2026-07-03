@@ -13,6 +13,7 @@ from src.storage.models import (
     PipelineRun,
     Product,
     ProductState,
+    ReviewEvent,
     TrendCache,
 )
 
@@ -267,3 +268,66 @@ class PipelineRunRepository:
                 .limit(limit)
             ).scalars().all()
         )
+
+
+class ReviewEventRepository:
+    """Append-only store of human review decisions and their comments."""
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def add(
+        self,
+        product_id: int,
+        decision: str,
+        *,
+        product_type: str | None = None,
+        reason: str | None = None,
+        comment: str | None = None,
+        params_snapshot: str | None = None,
+    ) -> ReviewEvent:
+        event = ReviewEvent(
+            product_id=product_id,
+            decision=decision,
+            product_type=product_type,
+            reason=reason,
+            comment=comment,
+            params_snapshot=params_snapshot,
+        )
+        self.session.add(event)
+        self.session.commit()
+        self.session.refresh(event)
+        return event
+
+    def list_for_product(self, product_id: int) -> list[ReviewEvent]:
+        """Full decision history for one product, newest first."""
+        return list(
+            self.session.execute(
+                select(ReviewEvent)
+                .where(ReviewEvent.product_id == product_id)
+                .order_by(ReviewEvent.created_at.desc(), ReviewEvent.id.desc())
+            ).scalars().all()
+        )
+
+    def list_all(
+        self, decision: str | None = None, limit: int | None = None
+    ) -> list[ReviewEvent]:
+        """All review events (optionally filtered by decision), newest first."""
+        stmt = select(ReviewEvent).order_by(
+            ReviewEvent.created_at.desc(), ReviewEvent.id.desc()
+        )
+        if decision:
+            stmt = stmt.where(ReviewEvent.decision == decision)
+        if limit:
+            stmt = stmt.limit(limit)
+        return list(self.session.execute(stmt).scalars().all())
+
+    def counts_by_decision(self) -> dict[str, int]:
+        from sqlalchemy import func as _func
+
+        rows = self.session.execute(
+            select(ReviewEvent.decision, _func.count(ReviewEvent.id)).group_by(
+                ReviewEvent.decision
+            )
+        ).all()
+        return {decision: count for decision, count in rows}

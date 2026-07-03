@@ -571,3 +571,48 @@ a:hover { text-decoration: underline; }
 }
 .params-table td { padding: 6px 0; overflow-wrap: anywhere; }
 .params-table tr + tr th, .params-table tr + tr td { border-top: 1px solid var(--line); }
+
+/* ---- top nav ---- */
+.topnav { display: flex; gap: 16px; margin-left: 6px; }
+.topnav a { font-size: 14px; font-weight: 600; color: var(--ink-soft); text-decoration: none; }
+.topnav a:hover { color: var(--ink); }
+
+/* ---- review form extras ---- */
+.field-hint { font-weight: 500; color: var(--ink-faint); }
+.field-select {
+  width: 100%; padding: 8px 10px; margin-bottom: 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  font-size: 14px; color: var(--ink);
+}
+
+/* ---- review history ---- */
+.review-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.rh-item { border-left: 3px solid var(--line); padding: 2px 0 2px 12px; }
+.rh-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rh-decision {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 2px 8px; border-radius: 100px; background: var(--gray-bg); color: var(--gray-ink);
+}
+.rh-approved { background: var(--green-bg); color: var(--green-ink); }
+.rh-rejected { background: var(--rose-bg); color: var(--rose-ink); }
+.rh-re_review { background: var(--blue-bg); color: var(--blue-ink); }
+.rh-reason { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+.rh-date { font-size: 12px; color: var(--ink-faint); margin-left: auto; }
+.rh-comment { margin: 6px 0 0; font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.rh-comment.last-note { font-style: italic; color: var(--ink-soft); margin: 0 0 12px; }
+
+/* ---- feedback table ---- */
+.table-scroll { overflow-x: auto; }
+.feedback-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.feedback-table th {
+  text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--ink-faint); font-weight: 700; padding: 8px 12px; border-bottom: 1px solid var(--line);
+}
+.feedback-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.feedback-table tr:hover td { background: var(--bg); }
+.fb-when { white-space: nowrap; color: var(--ink-soft); }
+.fb-product a { font-weight: 600; color: var(--ink); text-decoration: none; }
+.fb-product a:hover { text-decoration: underline; }
+.fb-niche { display: block; font-size: 12px; color: var(--ink-faint); }
+.fb-reason { white-space: nowrap; color: var(--ink-soft); }
+.fb-comment { min-width: 240px; overflow-wrap: anywhere; }

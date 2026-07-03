@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Reviewer feedback — Product Studio{% endblock %}
+
+{% block content %}
+  <div class="detail-header">
+    <div>
+      <h1 class="detail-title">Reviewer feedback</h1>
+      <p class="hint">Every review decision and comment, kept for tuning generation.
+        Rejections are shown first — the reasons here are the signal to improve products.</p>
+    </div>
+  </div>
+
+  <div class="chips" role="navigation" aria-label="Decision filters">
+    {% for key, label, count in chips %}
+      <a class="chip chip-{{ key }} {% if decision_filter == key %}chip-active{% endif %}"
+         href="{{ url_for('feedback', decision=key) }}">
+        {{ label }}<span class="chip-count">{{ count }}</span>
+      </a>
+    {% endfor %}
+  </div>
+
+  {% if rows %}
+    <div class="table-scroll">
+      <table class="feedback-table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Product</th>
+            <th>Type</th>
+            <th>Decision</th>
+            <th>Reason</th>
+            <th>Comment</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td class="fb-when">{{ row.event.created_at.strftime('%Y-%m-%d %H:%M') if row.event.created_at else '—' }}</td>
+            <td class="fb-product">
+              <a href="{{ url_for('product_detail', product_id=row.event.product_id) }}">{{ row.title }}</a>
+              {% if row.niche %}<span class="fb-niche">{{ row.niche }}</span>{% endif %}
+            </td>
+            <td>{{ 'Book' if row.event.product_type == 'picture_book' else 'Planner' }}</td>
+            <td><span class="rh-decision rh-{{ row.event.decision }}">{{ row.decision_label }}</span></td>
+            <td class="fb-reason">{{ row.reason_label or '—' }}</td>
+            <td class="fb-comment">{{ row.event.comment or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <p>No feedback in this view yet. Reviewer comments — especially on rejected
+        products — will collect here as you review.</p>
+    </div>
+  {% endif %}
+{% endblock %}

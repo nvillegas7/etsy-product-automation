@@ -35,7 +35,28 @@ from src.monitoring.metrics import PipelineMetrics
 from src.pipeline.state import ProductStateMachine
 from src.storage.database import get_session_factory, init_db
 from src.storage.models import Niche, Product, ProductState
-from src.storage.repository import EtsyListingRepository, ProductRepository
+from src.storage.repository import (
+    EtsyListingRepository,
+    ProductRepository,
+    ReviewEventRepository,
+)
+
+# Rejection reason categories offered in the review form (value, label). The
+# free-text comment is always captured too; these just make patterns countable.
+REVIEW_REASONS: list[tuple[str, str]] = [
+    ("design", "Design / visual"),
+    ("title_seo", "Title / SEO / keywords"),
+    ("quality", "Quality / errors"),
+    ("mismatch", "Off-brand / niche mismatch"),
+    ("pricing", "Pricing"),
+    ("other", "Other"),
+]
+_REVIEW_REASON_LABELS = dict(REVIEW_REASONS)
+_DECISION_LABELS = {
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "re_review": "Re-opened",
+}
 
 logger = structlog.get_logger()
 
@@ -414,11 +435,27 @@ def create_app(config: dict | None = None) -> Flask:
             return target
         return url_for("index")
 
+    _DECISION_FOR_STATE = {
+        ProductState.APPROVED: "approved",
+        ProductState.REJECTED: "rejected",
+        ProductState.REVIEW_PENDING: "re_review",
+    }
+
     def _apply_review_transition(
         product: Product, new_state: ProductState
     ) -> str | None:
-        """Flip state and persist the review note; return an error or None."""
+        """Flip state, persist the note, and append a review-feedback event.
+
+        A rejection MUST carry a comment — that reviewer feedback is the
+        signal used later to improve generation, so we refuse an empty one.
+        """
         note = (request.form.get("note") or "").strip()
+        reason = (request.form.get("reason") or "").strip() or None
+        if new_state == ProductState.REJECTED and not note:
+            return (
+                "Please add a comment explaining the rejection — reviewer "
+                "feedback is collected to improve future products."
+            )
         try:
             ProductStateMachine.transition(product.id, new_state, g.db)
         except ValueError as exc:
@@ -427,6 +464,27 @@ def create_app(config: dict | None = None) -> Flask:
             product.id,
             review_note=note or product.review_note,
             reviewed_at=datetime.now(timezone.utc),
+        )
+        # Append-only feedback log (keeps history across re-review cycles).
+        try:
+            snapshot = json.dumps(
+                {
+                    "product_type": product.product_type,
+                    "title": product.display_title or product.title,
+                    "palette": product.palette_name,
+                    "params": json.loads(product.params) if product.params else None,
+                },
+                default=str,
+            )
+        except (TypeError, ValueError):
+            snapshot = None
+        ReviewEventRepository(g.db).add(
+            product.id,
+            _DECISION_FOR_STATE.get(new_state, new_state.value),
+            product_type=product.product_type,
+            reason=reason,
+            comment=note or None,
+            params_snapshot=snapshot,
         )
         return None
 
@@ -528,6 +586,7 @@ def create_app(config: dict | None = None) -> Flask:
             pdf_size = product.file_size_bytes
 
         listing = EtsyListingRepository(g.db).get_by_product(product.id)
+        history = ReviewEventRepository(g.db).list_for_product(product.id)
         return render_template(
             "detail.html",
             view=view,
@@ -535,7 +594,54 @@ def create_app(config: dict | None = None) -> Flask:
             preview_pages=preview_pages,
             pdf_size=pdf_size,
             listing=listing,
+            history=history,
+            review_reasons=REVIEW_REASONS,
+            reason_labels=_REVIEW_REASON_LABELS,
+            decision_labels=_DECISION_LABELS,
             ProductState=ProductState,
+        )
+
+    @app.get("/feedback")
+    def feedback():
+        """Collected reviewer feedback across all products — the log to mine
+        later (especially rejections) to improve generation."""
+        decision_key = request.args.get("decision", "rejected")
+        valid = {"approved", "rejected", "re_review"}
+        decision = decision_key if decision_key in valid else None
+        repo = ReviewEventRepository(g.db)
+        events = repo.list_all(decision=decision, limit=500)
+        counts = repo.counts_by_decision()
+        niche_names = _niche_names()
+        products = {p.id: p for p in ProductRepository(g.db).list_products()}
+        rows = []
+        for ev in events:
+            prod = products.get(ev.product_id)
+            rows.append(
+                {
+                    "event": ev,
+                    "title": (
+                        (prod.display_title or prod.title)
+                        if prod is not None
+                        else f"Product #{ev.product_id}"
+                    ),
+                    "niche": (
+                        niche_names.get(prod.niche_id, "") if prod is not None else ""
+                    ),
+                    "reason_label": _REVIEW_REASON_LABELS.get(ev.reason or "", ev.reason or ""),
+                    "decision_label": _DECISION_LABELS.get(ev.decision, ev.decision),
+                }
+            )
+        chips = [
+            ("rejected", "Rejected", counts.get("rejected", 0)),
+            ("approved", "Approved", counts.get("approved", 0)),
+            ("re_review", "Re-opened", counts.get("re_review", 0)),
+            ("all", "All", sum(counts.values())),
+        ]
+        return render_template(
+            "feedback.html",
+            rows=rows,
+            chips=chips,
+            decision_filter=decision_key if decision else "all",
         )
 
     # ---------------- review actions ----------------

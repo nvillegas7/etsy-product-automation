@@ -124,3 +124,27 @@ class PipelineRun(Base):
     status: Mapped[str] = mapped_column(String(20), default="running")
     phase: Mapped[str | None] = mapped_column(String(50), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ReviewEvent(Base):
+    """Append-only log of every human review decision.
+
+    Unlike ``Product.review_note`` (a single latest value that is overwritten
+    each review), this keeps the full history — every approve/reject/re-review
+    with its reason category, free-text comment, and a snapshot of the
+    product's attributes at decision time. Rejection comments accumulate here
+    so the generation workflow can later be tuned from real reviewer feedback.
+    """
+
+    __tablename__ = "review_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    product_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    product_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    decision: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # approved | rejected | re_review
+    reason: Mapped[str | None] = mapped_column(String(40), nullable=True)  # category
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    params_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
