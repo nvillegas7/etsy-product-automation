@@ -185,6 +185,18 @@ def main() -> None:
     )
     subtitle = args.subtitle or niche_cfg.get("subtitle", "")
 
+    # Bias the decorative motif toward the niche so e.g. --slug fitness_planner
+    # renders gym motifs instead of whatever the preset happened to carry.
+    # Only fires for themed niches and when the caller didn't pin a motif; a
+    # generic/unknown slug leaves the design untouched.
+    if "motif" not in overrides:
+        from src.planner.designs import get_design
+        from src.planner.niche_themes import resolve_niche_motif
+        _base = get_design(args.design, overrides)
+        _themed = resolve_niche_motif(_base, args.slug)
+        if _themed.motif != _base.motif:
+            overrides = {**overrides, "motif": _themed.motif}
+
     spec = PlannerSpec(
         title=title,
         display_title=display_title,

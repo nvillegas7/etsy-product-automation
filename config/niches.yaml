@@ -3,6 +3,10 @@
 niches:
   adhd_planner:
     name: "ADHD Planner"
+    # Documentation only -- the authoritative niche->motif policy lives in
+    # src/planner/niche_themes.py (NICHE_MOTIFS). Themed primary; abstract
+    # geometric/minimal are the fallbacks.
+    theme_motif: "focus"
     seed_keywords:
       - "adhd planner"
       - "adhd daily planner"
@@ -48,6 +52,7 @@ niches:
 
   budget_planner:
     name: "Budget Planner"
+    theme_motif: "finance"  # see src/planner/niche_themes.py NICHE_MOTIFS
     seed_keywords:
       - "budget planner"
       - "financial planner"
@@ -91,6 +96,7 @@ niches:
 
   student_planner:
     name: "Student Planner"
+    theme_motif: "academic"  # see src/planner/niche_themes.py NICHE_MOTIFS
     seed_keywords:
       - "student planner"
       - "college planner"
@@ -136,6 +142,7 @@ niches:
 
   fitness_planner:
     name: "Fitness Planner"
+    theme_motif: "fitness"  # see src/planner/niche_themes.py NICHE_MOTIFS
     seed_keywords:
       - "fitness planner"
       - "workout planner"
@@ -181,6 +188,7 @@ niches:
 
   teacher_planner:
     name: "Teacher Planner"
+    theme_motif: "teaching"  # see src/planner/niche_themes.py NICHE_MOTIFS
     seed_keywords:
       - "teacher planner"
       - "lesson planner"

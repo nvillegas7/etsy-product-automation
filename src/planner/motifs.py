@@ -28,7 +28,7 @@ import random
 
 from fpdf import FPDF
 
-from src.planner.styles import Theme, WHITE, blend
+from src.planner.styles import Theme, WHITE, blend, CONTAINERS
 
 PAGE_W = 482.0
 PAGE_H = 361.2
@@ -850,10 +850,490 @@ class MinimalMotif(MotifFamily):
                 gy += step
 
 
+# ===========================================================================
+# Themed line-icon families (fitness / academic / finance / teaching / focus)
+# ===========================================================================
+#
+# These five draw clean, flat, RECOGNISABLE line icons -- a single consistent
+# ~1.0-1.6pt stroke, geometric clarity, premium adult-planner look.  Each
+# icon is a module-level function ``(pdf, cx, cy, r, line_c, mark_c, lw)``
+# that draws one icon centred on ``(cx, cy)`` roughly spanning the box
+# ``[cx-r, cx+r] x [cy-r, cy+r]``.  ``line_c`` is the confident stroke (reads
+# on paper AND on the solid plate via :func:`_geo_inks`); ``mark_c`` is the
+# accent used sparingly for a single considered fill; ``lw`` is the stroke.
+#
+# Every family shares the slot machinery in :class:`_IconMotif`, which mirrors
+# how :class:`GeometricMotif` fills the seven slots (bullet rotates the set by
+# the priority number; corner is a small quadrant-aware cluster; divider is a
+# centred icon between hairlines; band is an alternating strip; pattern_fill is
+# a sparse SEEDED field; cover_hero is a balanced medallion + baseline
+# composition; ground_field delegates to pattern_fill).
+
+
+def _pen(pdf: FPDF, color: tuple, lw: float) -> None:
+    pdf.set_draw_color(*color)
+    pdf.set_line_width(lw)
+
+
+def _icon_lw(r: float) -> float:
+    """A consistent stroke that scales gently with the icon size."""
+    return min(1.6, max(0.9, 0.45 + r * 0.12))
+
+
+# -- Fitness icons ----------------------------------------------------------
+
+def _i_dumbbell(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bx = r * 0.52          # inner half-length of the bar
+    wt = r * 0.40          # weight width
+    ht = r * 1.00          # weight height
+    pdf.line(cx - bx, cy, cx + bx, cy)
+    for sx in (-1, 1):
+        ex = cx + sx * bx
+        pdf.rect(ex - wt / 2, cy - ht / 2, wt, ht, style="D",
+                 round_corners=True, corner_radius=wt * 0.4)
+        pdf.line(ex + sx * wt * 0.95, cy - ht * 0.3,
+                 ex + sx * wt * 0.95, cy + ht * 0.3)
+
+
+def _i_bottle(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bw = r * 0.82
+    bh = r * 1.5
+    top = cy - bh * 0.42
+    pdf.rect(cx - bw / 2, top, bw, bh, style="D",
+             round_corners=True, corner_radius=bw * 0.34)
+    cw = bw * 0.56
+    pdf.rect(cx - cw / 2, top - r * 0.32, cw, r * 0.32, style="D",
+             round_corners=True, corner_radius=r * 0.08)
+    pdf.line(cx - bw / 2, cy + bh * 0.12, cx + bw / 2, cy + bh * 0.12)
+
+
+def _i_stopwatch(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rr = r * 0.62
+    ccy = cy + r * 0.14
+    pdf.circle(cx, ccy, rr, style="D")
+    pdf.line(cx, ccy - rr, cx, ccy - rr - r * 0.22)
+    pdf.rect(cx - r * 0.16, ccy - rr - r * 0.36, r * 0.32, r * 0.18, style="D")
+    pdf.line(cx, ccy, cx, ccy - rr * 0.62)
+    pdf.line(cx, ccy, cx + rr * 0.5, ccy)
+
+
+def _i_heartbeat(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.polyline([(cx - r, cy), (cx - r * 0.4, cy),
+                  (cx - r * 0.12, cy - r * 0.72), (cx + r * 0.12, cy + r * 0.6),
+                  (cx + r * 0.4, cy), (cx + r, cy)], style="D")
+
+
+def _i_medal(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    disc_cy = cy + r * 0.42
+    rr = r * 0.5
+    # two ribbon triangles rising from the shoulders of the disc
+    pdf.polygon([(cx - r * 0.34, cy - r * 0.95), (cx - r * 0.02, cy - r * 0.05),
+                 (cx - r * 0.36, cy + r * 0.02)], style="D")
+    pdf.polygon([(cx + r * 0.34, cy - r * 0.95), (cx + r * 0.02, cy - r * 0.05),
+                 (cx + r * 0.36, cy + r * 0.02)], style="D")
+    pdf.circle(cx, disc_cy, rr, style="D")
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, disc_cy, rr * 0.34, style="F")
+
+
+def _i_kettlebell(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rb = r * 0.54
+    bcy = cy + r * 0.4
+    pdf.circle(cx, bcy, rb, style="D")     # round body
+    # inverted-U handle sitting on the body with a visible hole
+    hw = r * 0.36
+    ys = cy - r * 0.32
+    pdf.arc(cx - hw, ys - hw, hw * 2, 180, 360, style="D")   # top bulge
+    body_top = bcy - rb
+    pdf.line(cx - hw, ys, cx - hw, body_top + r * 0.02)
+    pdf.line(cx + hw, ys, cx + hw, body_top + r * 0.02)
+
+
+# -- Shared slot machinery --------------------------------------------------
+
+class _IconMotif(MotifFamily):
+    """Shared machinery for the flat line-icon motif families.
+
+    Subclasses set ``name`` and ``ICONS`` -- a tuple of icon-drawing functions
+    (module-level, so indexing the tuple yields the raw function, not a bound
+    method).  ``ICONS[0]`` is the family's signature icon (used solo for
+    divider / corner / cover medallion); ``ICONS[0]`` & ``ICONS[1]`` alternate
+    in the band.
+    """
+
+    ICONS: tuple = ()
+
+    def bullet(self, pdf, theme, x, y, size, number=None):
+        line_c, mark_c, _soft = _geo_inks(theme)
+        cx, cy = x + size / 2, y + size / 2
+        r = size * 0.5
+        idx = ((number - 1) % len(self.ICONS)) if number else 0
+        self.ICONS[idx](pdf, cx, cy, r, line_c, mark_c, _icon_lw(r))
+        if number is not None:
+            return _number_beside(pdf, theme, x, y, size, number)
+        return x + size + 2.6
+
+    def divider(self, pdf, theme, cx, cy, w):
+        line_c, mark_c, soft = _geo_inks(theme)
+        r = 3.6
+        gap = r + 4.6
+        pdf.set_draw_color(*soft)
+        pdf.set_line_width(0.4)
+        pdf.line(cx - w / 2, cy, cx - gap, cy)
+        pdf.line(cx + gap, cy, cx + w / 2, cy)
+        self.ICONS[0](pdf, cx, cy, r, line_c, mark_c, _icon_lw(r))
+
+    def corner(self, pdf, theme, x, y, size, quadrant):
+        dx, dy = _quadrant_dir(quadrant)
+        line_c, mark_c, _soft = _geo_inks(theme)
+        s = size / 22.0
+        r = 5.2 * s
+        cx = x + dx * (r + 2.0)
+        cy = y + dy * (r + 2.0)
+        self.ICONS[0](pdf, cx, cy, r, line_c, mark_c, _icon_lw(r))
+        r2 = r * 0.5
+        self.ICONS[1 % len(self.ICONS)](pdf, cx + dx * r * 2.2,
+                                        cy + dy * r * 1.7, r2, line_c, mark_c,
+                                        _icon_lw(r2))
+
+    def band(self, pdf, theme, x, y, w, h=6.0):
+        line_c, mark_c, _soft = _geo_inks(theme)
+        cy = y + h / 2
+        r = h * 0.42
+        step = r * 3.8
+        t = step / 2
+        i = 0
+        while t <= w - r * 0.5:
+            self.ICONS[i % 2](pdf, x + t, cy, r, line_c, mark_c, _icon_lw(r))
+            t += step
+            i += 1
+
+    def pattern_fill(self, pdf, theme, x, y, w, h, seed, scale=1.0):
+        line_c, mark_c, _soft = _geo_inks(theme)
+        rng = _rng(f"{seed}-{self.name}")
+        step = 52.0 * scale
+        r = 7.0 * scale
+        gy = y + step * 0.5
+        row = 0
+        while gy < y + h + r:
+            offset = (step * 0.5) if row % 2 else 0.0
+            gx = x + step * 0.4 + offset
+            while gx < x + w - r * 0.3:
+                fn = self.ICONS[rng.randrange(len(self.ICONS))]
+                jx = gx + rng.uniform(-5, 5) * scale
+                jy = gy + rng.uniform(-5, 5) * scale
+                rr = r * rng.uniform(0.82, 1.12)
+                with pdf.local_context(stroke_opacity=0.55, fill_opacity=0.55):
+                    fn(pdf, jx, jy, rr, line_c, mark_c, _icon_lw(rr))
+                gx += step
+            gy += step
+            row += 1
+
+    def cover_hero(self, pdf, theme, seed):
+        line_c, mark_c, soft = _geo_inks(theme)
+        cx = PAGE_W / 2
+        n = len(self.ICONS)
+        # Top medallion: a fine ring around the signature icon.
+        hy = 70.0
+        pdf.set_draw_color(*soft)
+        pdf.set_line_width(0.7)
+        with pdf.local_context(stroke_opacity=0.5):
+            pdf.circle(cx, hy, 32, style="D")
+        self.ICONS[0](pdf, cx, hy, 16, line_c, mark_c, 1.5)
+        # Symmetric flankers.
+        self.ICONS[1 % n](pdf, cx - 74, hy + 2, 11, line_c, mark_c,
+                          _icon_lw(11))
+        self.ICONS[2 % n](pdf, cx + 74, hy + 2, 11, line_c, mark_c,
+                          _icon_lw(11))
+        # Bottom baseline rhythm.
+        by = PAGE_H - 52.0
+        pdf.set_draw_color(*soft)
+        pdf.set_line_width(0.5)
+        with pdf.local_context(stroke_opacity=0.4):
+            pdf.line(48, by, PAGE_W - 48, by)
+        count = 7
+        for k in range(count):
+            fx = 70 + k * (PAGE_W - 140) / (count - 1)
+            self.ICONS[k % n](pdf, fx, by - 12, 9, line_c, mark_c, _icon_lw(9))
+
+
+class FitnessMotif(_IconMotif):
+    name = "fitness"
+    ICONS = (_i_dumbbell, _i_kettlebell, _i_bottle, _i_stopwatch,
+             _i_heartbeat, _i_medal)
+
+
+# -- Academic + teaching shared icons ---------------------------------------
+
+def _i_pencil(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    hh = r * 0.2
+    bx0 = cx - r * 0.8
+    bx1 = cx + r * 0.4
+    pdf.rect(bx0, cy - hh, bx1 - bx0, hh * 2, style="D")
+    pdf.polygon([(bx1, cy - hh), (cx + r * 0.85, cy), (bx1, cy + hh)],
+                style="D")
+    pdf.line(bx0 + r * 0.3, cy - hh, bx0 + r * 0.3, cy + hh)   # band
+    pdf.set_fill_color(*mark_c)
+    pdf.polygon([(cx + r * 0.66, cy - hh * 0.55), (cx + r * 0.85, cy),
+                 (cx + r * 0.66, cy + hh * 0.55)], style="F")   # lead tip
+
+
+def _i_star(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.star(cx, cy, r_in=r * 0.42, r_out=r * 0.86, corners=5,
+             rotate_degrees=-90, style="D")
+
+
+def _i_bulb(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rr = r * 0.54
+    bcy = cy - r * 0.18
+    pdf.circle(cx, bcy, rr, style="D")
+    bw = rr * 0.9
+    basey = bcy + rr * 0.74
+    pdf.rect(cx - bw / 2, basey, bw, r * 0.32, style="D")
+    pdf.line(cx - bw / 2, basey + r * 0.16, cx + bw / 2, basey + r * 0.16)
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, bcy, r * 0.1, style="F")
+
+
+# -- Academic-only icons ----------------------------------------------------
+
+def _i_openbook(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    top = cy - r * 0.5
+    bot = cy + r * 0.52
+    pdf.line(cx, top + r * 0.06, cx, bot)                       # spine
+    pdf.polygon([(cx, top + r * 0.06), (cx - r * 0.86, top + r * 0.3),
+                 (cx - r * 0.86, bot - r * 0.04),
+                 (cx, bot - r * 0.06)], style="D")               # left page
+    pdf.polygon([(cx, top + r * 0.06), (cx + r * 0.86, top + r * 0.3),
+                 (cx + r * 0.86, bot - r * 0.04),
+                 (cx, bot - r * 0.06)], style="D")               # right page
+
+
+def _i_gradcap(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    top = cy - r * 0.46
+    pdf.polygon([(cx, top), (cx + r * 0.92, cy - r * 0.06),
+                 (cx, cy + r * 0.34), (cx - r * 0.92, cy - r * 0.06)],
+                style="D")                                       # mortarboard
+    pdf.polygon([(cx - r * 0.36, cy + r * 0.16), (cx + r * 0.36, cy + r * 0.16),
+                 (cx + r * 0.28, cy + r * 0.52),
+                 (cx - r * 0.28, cy + r * 0.52)], style="D")     # cap band
+    pdf.line(cx + r * 0.92, cy - r * 0.06, cx + r * 0.66, cy + r * 0.5)  # tassel
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx + r * 0.66, cy + r * 0.58, r * 0.1, style="F")
+
+
+def _i_ruler(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    w = r * 1.7
+    hh = r * 0.34
+    x0 = cx - w / 2
+    pdf.rect(x0, cy - hh, w, hh * 2, style="D")
+    n = 6
+    for i in range(1, n):
+        tx = x0 + w * i / n
+        tick = hh * (1.25 if i % 2 == 0 else 0.7)
+        pdf.line(tx, cy - hh, tx, cy - hh + tick)
+
+
+class AcademicMotif(_IconMotif):
+    name = "academic"
+    ICONS = (_i_pencil, _i_openbook, _i_gradcap, _i_ruler, _i_bulb, _i_star)
+
+
+# -- Finance icons ----------------------------------------------------------
+
+def _i_coin(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.circle(cx, cy, r * 0.78, style="D")
+    pdf.circle(cx, cy, r * 0.55, style="D")
+    pdf.line(cx, cy - r * 0.5, cx, cy + r * 0.5)   # currency bar
+
+
+def _i_coinstack(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    ew = r * 1.3
+    eh = r * 0.32
+    for i in range(3):
+        ey = cy + r * 0.5 - i * r * 0.44
+        pdf.ellipse(cx - ew / 2, ey - eh / 2, ew, eh, style="D")
+
+
+def _i_piggy(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    bw = r * 1.44
+    bh = r * 0.98
+    pdf.ellipse(cx - bw / 2, cy - bh / 2, bw, bh, style="D")     # body
+    pdf.polygon([(cx - r * 0.22, cy - bh * 0.4), (cx + r * 0.04, cy - bh * 0.78),
+                 (cx + r * 0.14, cy - bh * 0.34)], style="D")    # ear
+    pdf.rect(cx + bw * 0.3, cy - r * 0.02, r * 0.3, r * 0.32, style="D")  # snout
+    pdf.line(cx - r * 0.16, cy - bh * 0.34, cx + r * 0.2, cy - bh * 0.34)  # slot
+    pdf.line(cx - r * 0.42, cy + bh * 0.42, cx - r * 0.42, cy + bh * 0.66)  # leg
+    pdf.line(cx + r * 0.26, cy + bh * 0.42, cx + r * 0.26, cy + bh * 0.66)  # leg
+
+
+def _i_barchart(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    base = cy + r * 0.62
+    pdf.line(cx - r * 0.82, base, cx + r * 0.82, base)
+    bw = r * 0.34
+    for bx, hgt in ((cx - r * 0.56, r * 0.5), (cx - r * 0.02, r * 0.86),
+                    (cx + r * 0.52, r * 1.2)):
+        pdf.rect(bx - bw / 2, base - hgt, bw, hgt, style="D")
+
+
+def _i_uparrow(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    x1, y1 = cx + r * 0.62, cy - r * 0.58
+    pdf.line(cx - r * 0.7, cy + r * 0.6, x1, y1)
+    pdf.line(x1, y1, x1 - r * 0.46, y1 + r * 0.08)
+    pdf.line(x1, y1, x1 - r * 0.08, y1 + r * 0.46)
+
+
+def _i_wallet(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    w = r * 1.5
+    h = r * 1.02
+    pdf.rect(cx - w / 2, cy - h / 2, w, h, style="D",
+             round_corners=True, corner_radius=r * 0.16)
+    fy = cy + h * 0.04
+    pdf.line(cx - w / 2, fy, cx + w / 2, fy)                     # flap seam
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx + w * 0.32, fy, r * 0.13, style="F")          # clasp
+
+
+class FinanceMotif(_IconMotif):
+    name = "finance"
+    ICONS = (_i_coin, _i_coinstack, _i_piggy, _i_barchart, _i_uparrow,
+             _i_wallet)
+
+
+# -- Teaching icons (apple / chalkboard / book stack / A+; reuse pencil+star)
+
+def _i_apple(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    rr = r * 0.6
+    bcy = cy + r * 0.15
+    pdf.circle(cx, bcy, rr, style="D")                          # body
+    pdf.line(cx, bcy - rr * 0.98, cx + r * 0.05, cy - r * 0.6)  # stem
+    pdf.set_fill_color(*mark_c)
+    pdf.ellipse(cx + r * 0.05, cy - r * 0.72, r * 0.36, r * 0.2,
+                style="F")                                      # leaf
+
+
+def _i_chalkboard(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    w = r * 1.6
+    h = r * 1.1
+    pdf.rect(cx - w / 2, cy - h / 2, w, h, style="D")           # frame
+    ins = r * 0.16
+    pdf.rect(cx - w / 2 + ins, cy - h / 2 + ins, w - 2 * ins, h - 2 * ins,
+             style="D")                                          # inner board
+    pdf.line(cx - w * 0.26, cy - h * 0.1, cx + w * 0.06, cy - h * 0.1)
+    pdf.line(cx - w * 0.26, cy + h * 0.12, cx + w * 0.2, cy + h * 0.12)
+
+
+def _i_bookstack(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    w = r * 1.5
+    hh = r * 0.3
+    for i, off in enumerate((-r * 0.16, r * 0.2, -r * 0.06)):
+        y0 = cy + r * 0.55 - i * (hh + r * 0.08)
+        pdf.rect(cx - w / 2 + off, y0 - hh, w, hh, style="D")
+
+
+def _i_aplus(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    ax = cx - r * 0.25
+    pdf.line(ax, cy - r * 0.6, ax - r * 0.42, cy + r * 0.55)    # left leg
+    pdf.line(ax, cy - r * 0.6, ax + r * 0.42, cy + r * 0.55)    # right leg
+    pdf.line(ax - r * 0.22, cy + r * 0.06, ax + r * 0.22, cy + r * 0.06)  # bar
+    px, py = cx + r * 0.6, cy - r * 0.28
+    _pen(pdf, mark_c, lw)
+    pdf.line(px - r * 0.18, py, px + r * 0.18, py)              # plus
+    pdf.line(px, py - r * 0.18, px, py + r * 0.18)
+
+
+class TeachingMotif(_IconMotif):
+    name = "teaching"
+    ICONS = (_i_apple, _i_chalkboard, _i_bookstack, _i_pencil, _i_star,
+             _i_aplus)
+
+
+# -- Focus / productivity icons (reuse bulb) --------------------------------
+
+def _i_checkbox(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    s = r * 1.2
+    pdf.rect(cx - s / 2, cy - s / 2, s, s, style="D",
+             round_corners=True, corner_radius=r * 0.22)
+    _pen(pdf, mark_c, lw * 1.1)
+    pdf.polyline([(cx - r * 0.32, cy + r * 0.02), (cx - r * 0.06, cy + r * 0.3),
+                  (cx + r * 0.42, cy - r * 0.34)], style="D")
+
+
+def _i_checkmark(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw * 1.15)
+    pdf.polyline([(cx - r * 0.7, cy + r * 0.05), (cx - r * 0.18, cy + r * 0.55),
+                  (cx + r * 0.7, cy - r * 0.5)], style="D")
+
+
+def _i_arrow(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.line(cx - r * 0.75, cy, cx + r * 0.6, cy)
+    pdf.line(cx + r * 0.6, cy, cx + r * 0.22, cy - r * 0.36)
+    pdf.line(cx + r * 0.6, cy, cx + r * 0.22, cy + r * 0.36)
+
+
+def _i_target(pdf, cx, cy, r, line_c, mark_c, lw):
+    _pen(pdf, line_c, lw)
+    pdf.circle(cx, cy, r * 0.72, style="D")
+    pdf.circle(cx, cy, r * 0.4, style="D")
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx, cy, r * 0.13, style="F")
+
+
+def _i_dotcluster(pdf, cx, cy, r, line_c, mark_c, lw):
+    pdf.set_fill_color(*line_c)
+    for dx, dy in ((-r * 0.42, -r * 0.34), (r * 0.42, -r * 0.28),
+                   (-r * 0.26, r * 0.44)):
+        pdf.circle(cx + dx, cy + dy, r * 0.16, style="F")
+    pdf.set_fill_color(*mark_c)
+    pdf.circle(cx + r * 0.34, cy + r * 0.36, r * 0.16, style="F")
+
+
+class FocusMotif(_IconMotif):
+    name = "focus"
+    ICONS = (_i_checkbox, _i_checkmark, _i_arrow, _i_target, _i_bulb,
+             _i_dotcluster)
+
+
 MOTIFS: dict[str, MotifFamily] = {
     "botanical": BotanicalMotif(),
     "geometric": GeometricMotif(),
     "celestial": CelestialMotif(),
     "coastal": CoastalMotif(),
     "minimal": MinimalMotif(),
+    "fitness": FitnessMotif(),
+    "academic": AcademicMotif(),
+    "finance": FinanceMotif(),
+    "teaching": TeachingMotif(),
+    "focus": FocusMotif(),
 }
+
+# The container-style token per motif lives in ``styles.CONTAINERS`` (consumed
+# by the widgets).  The five themed line-icon families use the crisp
+# ``squared_hairline`` container.  This module owns its motif vocabulary, so it
+# registers the tokens here (idempotent) rather than editing styles.py.
+for _themed in ("fitness", "academic", "finance", "teaching", "focus"):
+    CONTAINERS.setdefault(_themed, "squared_hairline")

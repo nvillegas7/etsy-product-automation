@@ -1365,6 +1365,14 @@ class PipelineOrchestrator:
         """Build a PlannerSpec consumed by PlannerGenerator.generate()."""
         planner_cfg = self.config.get("planner", {})
 
+        # Bias the decorative motif toward the niche (student -> academic,
+        # fitness -> fitness, ...) so a rotated preset's motif never mismatches
+        # the product.  Preserves the rotated preset + palette bundle: only the
+        # motif dimension is (possibly) overridden.
+        design_overrides = self._apply_niche_motif(
+            design, niche_slug, dict(design_overrides or {})
+        )
+
         try:
             from src.planner.generator import PlannerSpec
 
@@ -1381,7 +1389,7 @@ class PipelineOrchestrator:
                 include_habits=True,
                 include_goals=True,
                 design=design,
-                design_overrides=design_overrides or {},
+                design_overrides=design_overrides,
             )
         except ImportError:
             # Fallback to dict if PlannerSpec not available
@@ -1393,5 +1401,30 @@ class PipelineOrchestrator:
                 "year": year,
                 "niche_slug": niche_slug,
                 "design": design,
-                "design_overrides": design_overrides or {},
+                "design_overrides": design_overrides,
             }
+
+    @staticmethod
+    def _apply_niche_motif(
+        design: str, niche_slug: str, design_overrides: dict[str, str]
+    ) -> dict[str, str]:
+        """Return *design_overrides* with a niche-matched ``motif`` entry.
+
+        Resolves the preset + existing overrides into a concrete design, asks
+        the niche->motif policy for the right motif, and injects it as a motif
+        override only when the preset's motif would mismatch the niche.  A
+        no-op for generic/unknown slugs, for an explicit caller motif override,
+        or when the design system is unavailable (parallel-build safety).
+        """
+        if "motif" in design_overrides:
+            return design_overrides  # respect an explicit caller override
+        try:
+            from src.planner.designs import get_design
+            from src.planner.niche_themes import resolve_niche_motif
+        except ImportError:
+            return design_overrides
+        base = get_design(design, design_overrides)
+        themed = resolve_niche_motif(base, niche_slug)
+        if themed.motif != base.motif:
+            design_overrides = {**design_overrides, "motif": themed.motif}
+        return design_overrides
