@@ -150,6 +150,41 @@ def _parse_json(raw: str | None, default):
         return default
 
 
+# Etsy listing limits enforced when a reviewer edits tags.
+MAX_TAGS = 13
+MAX_TAG_LEN = 20
+
+
+def _parse_tags(raw: str) -> tuple[list[str], str | None]:
+    """Parse a comma/newline-separated tag input into a clean JSON-ready list.
+
+    Trims each tag, drops empties and case-insensitive duplicates (first
+    spelling wins, order preserved). Returns ``(tags, error)``: on any
+    Etsy-limit violation (>13 tags, or a tag over 20 chars) ``error`` is a
+    human-readable message and the tag list should not be saved.
+    """
+    pieces = [
+        part.strip()
+        for chunk in (raw or "").replace("\r", "\n").split("\n")
+        for part in chunk.split(",")
+    ]
+    tags: list[str] = []
+    seen: set[str] = set()
+    for tag in pieces:
+        if not tag:
+            continue
+        if len(tag) > MAX_TAG_LEN:
+            return [], f"Each tag must be {MAX_TAG_LEN} characters or fewer — '{tag}' is too long."
+        key = tag.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        tags.append(tag)
+    if len(tags) > MAX_TAGS:
+        return [], f"Etsy allows at most {MAX_TAGS} tags (you entered {len(tags)})."
+    return tags, None
+
+
 def mockup_path_list(product: Product) -> list[str]:
     """Return the mockup paths for a product (JSON list or single path)."""
     raw = product.mockup_path
@@ -714,6 +749,61 @@ def create_app(config: dict | None = None) -> Flask:
         return _review_action(
             product_id, ProductState.REVIEW_PENDING, "sent back for review"
         )
+
+    @app.post("/product/<int:product_id>/edit")
+    def edit_listing(product_id: int):
+        """Let the reviewer edit the Etsy listing fields before publishing.
+
+        Editable only while REVIEW_PENDING or APPROVED — never after the
+        product is PUBLISHED. The reviewer's tags (etc.) are what publishing
+        later sends to Etsy, so this input wins over the auto-generated SEO.
+        """
+        product = _get_product_or_404(product_id)
+        detail_url = url_for("product_detail", product_id=product_id)
+
+        if product.state not in (ProductState.REVIEW_PENDING, ProductState.APPROVED):
+            flash(
+                "Listing details can only be edited while a product is "
+                "pending review or approved.",
+                "error",
+            )
+            return redirect(detail_url)
+
+        title = (request.form.get("title") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        raw_tags = request.form.get("tags") or ""
+        raw_price = (request.form.get("price_usd") or "").strip()
+
+        if not title:
+            flash("Title is required.", "error")
+            return redirect(detail_url)
+        if len(title) > 140:
+            flash("Title must be 140 characters or fewer.", "error")
+            return redirect(detail_url)
+
+        tags, tag_error = _parse_tags(raw_tags)
+        if tag_error is not None:
+            flash(tag_error, "error")
+            return redirect(detail_url)
+
+        try:
+            price = float(raw_price)
+        except (TypeError, ValueError):
+            flash("Price must be a number greater than 0.", "error")
+            return redirect(detail_url)
+        if price <= 0:
+            flash("Price must be greater than 0.", "error")
+            return redirect(detail_url)
+
+        ProductRepository(g.db).update(
+            product.id,
+            title=title,
+            description=description,
+            tags=json.dumps(tags),
+            price_usd=price,
+        )
+        flash("Listing details updated.", "success")
+        return redirect(detail_url)
 
     @app.post("/product/<int:product_id>/publish")
     def publish(product_id: int):

@@ -173,6 +173,28 @@
       </section>
       {% endif %}
 
+      {% if p.state in (ProductState.REVIEW_PENDING, ProductState.APPROVED) %}
+        <section class="panel">
+          <h2 class="panel-title">Edit listing details</h2>
+          <form method="post" action="{{ url_for('edit_listing', product_id=p.id) }}" class="review-form">
+            <label class="field-label" for="edit-title">Etsy listing title <span class="field-hint">(max 140 chars)</span></label>
+            <input type="text" id="edit-title" name="title" maxlength="140"
+                   class="field-select" value="{{ p.title }}">
+            <label class="field-label" for="edit-description">Description</label>
+            <textarea id="edit-description" name="description" rows="6">{{ p.description or '' }}</textarea>
+            <label class="field-label" for="edit-tags">Tags <span class="field-hint">(comma-separated; up to 13, ≤20 chars each)</span></label>
+            <input type="text" id="edit-tags" name="tags"
+                   class="field-select" value="{{ view.tags | join(', ') }}">
+            <label class="field-label" for="edit-price">Price (USD)</label>
+            <input type="number" id="edit-price" name="price_usd" min="0.01" step="0.01"
+                   class="field-select" value="{{ '%.2f' % p.price_usd }}">
+            <div class="review-buttons">
+              <button type="submit" class="btn btn-blue">Save listing details</button>
+            </div>
+          </form>
+        </section>
+      {% endif %}
+
       <section class="panel">
         <h2 class="panel-title">Listing metadata</h2>
         <dl class="meta-list">

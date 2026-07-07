@@ -133,7 +133,7 @@ def main():
 
     # Block until we receive the callback
     try:
-        done_event.wait(timeout=300)  # 5-minute timeout
+        done_event.wait(timeout=900)  # 15-minute timeout
     except KeyboardInterrupt:
         print("\nSetup cancelled by user.")
         server.shutdown()
