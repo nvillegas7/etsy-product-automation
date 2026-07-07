@@ -104,7 +104,7 @@
 
     <div class="detail-right">
       {% if p.state == ProductState.REVIEW_PENDING %}
-        <section class="panel panel-review">
+        <section class="panel panel-review" id="review">
           <h2 class="panel-title">Review decision</h2>
           <form method="post" class="review-form">
             <input type="hidden" name="next" value="{{ url_for('product_detail', product_id=p.id) }}">
@@ -173,9 +173,13 @@
       </section>
       {% endif %}
 
-      {% if p.state in (ProductState.REVIEW_PENDING, ProductState.APPROVED) %}
+      {% if p.state in (ProductState.REVIEW_PENDING, ProductState.APPROVED, ProductState.PUBLISHED) %}
         <section class="panel">
           <h2 class="panel-title">Edit listing details</h2>
+          {% if p.state == ProductState.PUBLISHED %}
+            <p class="hint">This product is live on Etsy — saving pushes these
+              changes straight to the Etsy listing.</p>
+          {% endif %}
           <form method="post" action="{{ url_for('edit_listing', product_id=p.id) }}" class="review-form">
             <label class="field-label" for="edit-title">Etsy listing title <span class="field-hint">(max 140 chars)</span></label>
             <input type="text" id="edit-title" name="title" maxlength="140"
@@ -185,11 +189,13 @@
             <label class="field-label" for="edit-tags">Tags <span class="field-hint">(comma-separated; up to 13, ≤20 chars each)</span></label>
             <input type="text" id="edit-tags" name="tags"
                    class="field-select" value="{{ view.tags | join(', ') }}">
-            <label class="field-label" for="edit-price">Price (USD)</label>
+            <label class="field-label" for="edit-price">Price (USD) <span class="field-hint">(converted to your shop currency on Etsy)</span></label>
             <input type="number" id="edit-price" name="price_usd" min="0.01" step="0.01"
                    class="field-select" value="{{ '%.2f' % p.price_usd }}">
             <div class="review-buttons">
-              <button type="submit" class="btn btn-blue">Save listing details</button>
+              <button type="submit" class="btn btn-blue">
+                {% if p.state == ProductState.PUBLISHED %}Save &amp; sync to Etsy{% else %}Save listing details{% endif %}
+              </button>
             </div>
           </form>
         </section>

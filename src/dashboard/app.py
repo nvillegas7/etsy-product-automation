@@ -776,19 +776,25 @@ def create_app(config: dict | None = None) -> Flask:
 
     @app.post("/product/<int:product_id>/edit")
     def edit_listing(product_id: int):
-        """Let the reviewer edit the Etsy listing fields before publishing.
+        """Edit the Etsy listing fields.
 
-        Editable only while REVIEW_PENDING or APPROVED — never after the
-        product is PUBLISHED. The reviewer's tags (etc.) are what publishing
-        later sends to Etsy, so this input wins over the auto-generated SEO.
+        Editable while REVIEW_PENDING or APPROVED (the reviewer's input wins
+        over the auto-generated SEO before publishing) AND while PUBLISHED —
+        in which case the saved fields are also pushed to the live Etsy
+        listing so the two never drift apart.
         """
         product = _get_product_or_404(product_id)
         detail_url = url_for("product_detail", product_id=product_id)
 
-        if product.state not in (ProductState.REVIEW_PENDING, ProductState.APPROVED):
+        editable = (
+            ProductState.REVIEW_PENDING,
+            ProductState.APPROVED,
+            ProductState.PUBLISHED,
+        )
+        if product.state not in editable:
             flash(
                 "Listing details can only be edited while a product is "
-                "pending review or approved.",
+                "pending review, approved, or published.",
                 "error",
             )
             return redirect(detail_url)
@@ -826,6 +832,29 @@ def create_app(config: dict | None = None) -> Flask:
             tags=json.dumps(tags),
             price_usd=price,
         )
+
+        # A published product has a live Etsy listing -- keep it in sync so the
+        # dashboard and Etsy never diverge. Local edits are already saved; if
+        # the Etsy push fails we surface it but keep the local change.
+        if product.state == ProductState.PUBLISHED:
+            from src.pipeline.orchestrator import PipelineOrchestrator
+
+            try:
+                PipelineOrchestrator(config, session_factory).update_etsy_listing(
+                    product_id
+                )
+            except Exception as exc:  # noqa: BLE001 - surface sync failure to reviewer
+                logger.warning(
+                    "etsy_listing_sync_failed", product_id=product_id, error=str(exc)
+                )
+                flash(
+                    f"Saved locally, but updating the Etsy listing failed: {exc}",
+                    "warning",
+                )
+                return redirect(detail_url)
+            flash("Listing details updated and synced to Etsy.", "success")
+            return redirect(detail_url)
+
         flash("Listing details updated.", "success")
         return redirect(detail_url)
 
@@ -875,6 +904,19 @@ def create_app(config: dict | None = None) -> Flask:
         )
         flash(f"{label} generation started — refresh in a minute.", "success")
         return redirect(url_for("index"))
+
+    @app.get("/api/status")
+    def api_status():
+        """Lightweight JSON poll for the generation shadow card.
+
+        The grid shows a shimmering placeholder while a pipeline run is in
+        flight; the client polls this and reloads once generation finishes so
+        the freshly-built product appears without a manual refresh.
+        """
+        return {
+            "generating": _generation_lock.locked(),
+            "count": len(ProductRepository(g.db).list_products()),
+        }
 
     # ---------------- file serving (integer ids only) ----------------
 

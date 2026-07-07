@@ -19,12 +19,29 @@
          href="{{ url_for('index', state=state_filter, ptype=key) }}">{{ label }}</a>
     {% endfor %}
     {% if generation_running %}
-      <span class="gen-running">Generation running…</span>
+      <span class="gen-running"><span class="gen-dot"></span>Generation running…</span>
     {% endif %}
+    <span class="kbd-hint" aria-hidden="true">
+      <kbd>j</kbd><kbd>k</kbd> move · <kbd>o</kbd> open · <kbd>a</kbd> approve · <kbd>r</kbd> reject
+    </span>
   </div>
 
-  {% if views %}
+  <div id="gen-status" data-generating="{{ 'true' if generation_running else 'false' }}" hidden></div>
+
+  {% if views or generation_running %}
     <div class="grid">
+      {% if generation_running %}
+        <article class="card card-shadow" aria-label="Generating a new product">
+          <div class="thumb thumb-shimmer"></div>
+          <div class="card-body">
+            <div class="shimmer-line shimmer-badge"></div>
+            <div class="shimmer-line shimmer-title"></div>
+            <div class="shimmer-line shimmer-meta"></div>
+            <div class="shimmer-line shimmer-meta shimmer-short"></div>
+          </div>
+          <span class="card-shadow-label"><span class="gen-dot"></span>Generating…</span>
+        </article>
+      {% endif %}
       {% for v in views %}
         {% set p = v.product %}
         <article class="card">
@@ -62,10 +79,9 @@
                   <input type="hidden" name="next" value="{{ request.full_path }}">
                   <button type="submit" class="btn btn-green btn-sm">Approve</button>
                 </form>
-                <form method="post" action="{{ url_for('reject', product_id=p.id) }}" class="inline-form">
-                  <input type="hidden" name="next" value="{{ request.full_path }}">
-                  <button type="submit" class="btn btn-rose-outline btn-sm">Reject</button>
-                </form>
+                {# Rejecting requires a comment, so route to the detail form. #}
+                <a class="btn btn-rose-outline btn-sm card-reject-link"
+                   href="{{ url_for('product_detail', product_id=p.id) }}#review">Reject…</a>
               </div>
             {% endif %}
           </div>

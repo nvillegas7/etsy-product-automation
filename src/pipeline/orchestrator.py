@@ -18,6 +18,7 @@ from src.pipeline.state import ProductStateMachine
 from src.planner.styles import humanize
 from src.storage.models import Niche, Product, ProductState
 from src.storage.repository import (
+    EtsyListingRepository,
     NicheRepository,
     PipelineRunRepository,
     ProductRepository,
@@ -1318,22 +1319,9 @@ class PipelineOrchestrator:
                     "(plus ETSY_TAXONOMY_ID) in .env, then run scripts/setup_oauth.py once."
                 )
 
-            from src.publisher.auth import EtsyAuth
-            from src.publisher.listing import EtsyListingManager
             from src.publisher.uploader import EtsyUploader
-            from src.utils.rate_limiter import TokenBucketRateLimiter
 
-            rate_cfg = self.config.get("rate_limits", {})
-            auth = EtsyAuth(
-                api_key=os.environ["ETSY_API_KEY"],
-                shared_secret=os.environ["ETSY_SHARED_SECRET"],
-                session=session,
-            )
-            rate_limiter = TokenBucketRateLimiter(
-                requests_per_second=float(rate_cfg.get("etsy_requests_per_second", 5)),
-                requests_per_day=int(rate_cfg.get("etsy_requests_per_day", 5000)),
-            )
-            listing_mgr = EtsyListingManager(auth=auth, rate_limiter=rate_limiter)
+            listing_mgr = self._build_listing_manager(session)
             uploader = EtsyUploader(
                 listing_manager=listing_mgr,
                 session=session,
@@ -1363,6 +1351,79 @@ class PipelineOrchestrator:
             session.refresh(product)
 
             logger.info("product_published_to_etsy", product_id=product.id)
+            return product
+        finally:
+            session.close()
+
+    def _build_listing_manager(self, session: "Session"):
+        """Construct an authenticated EtsyListingManager for API calls."""
+        from src.publisher.auth import EtsyAuth
+        from src.publisher.listing import EtsyListingManager
+        from src.utils.rate_limiter import TokenBucketRateLimiter
+
+        rate_cfg = self.config.get("rate_limits", {})
+        auth = EtsyAuth(
+            api_key=os.environ["ETSY_API_KEY"],
+            shared_secret=os.environ["ETSY_SHARED_SECRET"],
+            session=session,
+        )
+        rate_limiter = TokenBucketRateLimiter(
+            requests_per_second=float(rate_cfg.get("etsy_requests_per_second", 5)),
+            requests_per_day=int(rate_cfg.get("etsy_requests_per_day", 5000)),
+        )
+        return EtsyListingManager(auth=auth, rate_limiter=rate_limiter)
+
+    def update_etsy_listing(self, product_id: int) -> "Product":
+        """Sync a product's current fields to its live Etsy listing.
+
+        Called when a reviewer edits a PUBLISHED product in the dashboard:
+        title, description, tags and price are pushed to the existing Etsy
+        listing (price converted into the shop currency). Raises with a clear
+        message when there is no listing or uploads are disabled.
+        """
+        from src.publisher.currency import convert_usd
+
+        session: Session = self.session_factory()
+        try:
+            product = session.get(Product, product_id)
+            if product is None:
+                raise ValueError(f"Product {product_id} not found")
+
+            listing = EtsyListingRepository(session).get_by_product(product_id)
+            if listing is None or not listing.listing_id:
+                raise ValueError(
+                    f"Product {product_id} has no Etsy listing to update."
+                )
+            if not _etsy_upload_enabled(self.config):
+                raise RuntimeError(
+                    "Etsy upload is disabled; cannot sync the listing to Etsy."
+                )
+
+            listing_mgr = self._build_listing_manager(session)
+            shop_id = listing.shop_id or listing_mgr.get_shop_id()
+            shop_currency = listing_mgr.get_shop_currency()
+            fx_rates = self.config.get("pricing", {}).get("fx_rates", {})
+            price = convert_usd(product.price_usd, shop_currency, fx_rates)
+
+            tags = json.loads(product.tags) if product.tags else []
+            if not isinstance(tags, list):
+                tags = []
+
+            listing_mgr.update_listing(
+                shop_id,
+                listing.listing_id,
+                title=product.title,
+                description=product.description or "",
+                tags=tags,
+            )
+            # Price lives on the listing's inventory offerings, not the listing
+            # itself -- update it separately.
+            listing_mgr.update_listing_price(listing.listing_id, price)
+            logger.info(
+                "etsy_listing_synced",
+                product_id=product_id,
+                listing_id=listing.listing_id,
+            )
             return product
         finally:
             session.close()

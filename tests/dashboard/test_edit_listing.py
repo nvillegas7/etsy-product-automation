@@ -129,18 +129,29 @@ class TestEditListing:
         p = _get_product(sf, ids["approved"])
         assert p.title == "Approved Edit"
 
-    def test_edit_published_refused(self, dashboard):
+    def test_edit_published_saves_locally_and_syncs(self, dashboard):
+        """Published products are now editable; the save also pushes to Etsy.
+
+        Etsy uploads are disabled in the test config, so the sync fails and is
+        surfaced as a warning -- but the local edit is still saved.
+        """
         client, ids, sf = dashboard
-        before = _get_product(sf, ids["published"])
-        old_title = before.title
         resp = client.post(
             f"/product/{ids['published']}/edit",
-            data={"title": "Hacked", "description": "d", "tags": "a", "price_usd": "9.99"},
+            data={
+                "title": "Published Edit",
+                "description": "d",
+                "tags": "a",
+                "price_usd": "9.99",
+            },
             follow_redirects=True,
         )
-        assert "can only be edited" in resp.get_data(as_text=True)
+        body = resp.get_data(as_text=True)
+        # The local change is saved even though Etsy is unreachable in tests.
         p = _get_product(sf, ids["published"])
-        assert p.title == old_title
+        assert p.title == "Published Edit"
+        # ...and the (failed) Etsy sync attempt is surfaced to the reviewer.
+        assert "Saved locally" in body
 
     def test_edit_form_prefilled(self, dashboard):
         client, ids, sf = dashboard

@@ -616,3 +616,75 @@ a:hover { text-decoration: underline; }
 .fb-niche { display: block; font-size: 12px; color: var(--ink-faint); }
 .fb-reason { white-space: nowrap; color: var(--ink-soft); }
 .fb-comment { min-width: 240px; overflow-wrap: anywhere; }
+
+/* ---------- keyboard shortcut hint ---------- */
+.kbd-hint {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.kbd-hint kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--ink-soft);
+}
+@media (max-width: 720px) { .kbd-hint { display: none; } }
+
+/* ---------- pulsing "generating" dot ---------- */
+.gen-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  vertical-align: middle;
+  animation: gen-pulse 1.1s ease-in-out infinite;
+}
+@keyframes gen-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+/* ---------- generation shadow (skeleton) card ---------- */
+.card-shadow { position: relative; }
+.card-shadow .card-shadow-label {
+  position: absolute; top: 10px; left: 10px;
+  display: inline-flex; align-items: center;
+  background: rgba(28, 36, 48, 0.72); color: #fff;
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px;
+}
+.thumb-shimmer { display: block; aspect-ratio: 4 / 3; width: 100%; }
+.shimmer-line { height: 12px; border-radius: 6px; margin: 10px 0; }
+.shimmer-badge { width: 40%; height: 16px; }
+.shimmer-title { width: 85%; height: 18px; }
+.shimmer-meta  { width: 70%; }
+.shimmer-short { width: 45%; }
+.thumb-shimmer, .shimmer-line {
+  background: linear-gradient(100deg, #eef0f3 30%, #f7f8fa 50%, #eef0f3 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---------- keyboard focus highlight on a card ---------- */
+.card-focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-lift);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumb-shimmer, .shimmer-line, .gen-dot { animation: none; }
+}

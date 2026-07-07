@@ -406,3 +406,105 @@ class EtsyListingManager:
         )
         logger.info("etsy_listing_activated", listing_id=listing_id, shop_id=shop_id)
         return result
+
+    # ------------------------------------------------------------------
+    # Update an existing listing's editable fields
+    # ------------------------------------------------------------------
+
+    def update_listing(
+        self,
+        shop_id: int,
+        listing_id: int,
+        *,
+        title: str | None = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
+    ) -> dict:
+        """Patch text fields on an existing (incl. active) listing.
+
+        Only the provided fields are sent. Price is deliberately NOT handled
+        here: Etsy ignores ``updateListing``'s ``price`` for any listing that
+        has inventory (all of them), so price changes must go through
+        :meth:`update_listing_price`. Returns ``{}`` when nothing to update.
+        """
+        body: dict = {}
+        if title is not None:
+            body["title"] = title
+        if description is not None:
+            body["description"] = description
+        if tags is not None:
+            body["tags"] = tags
+        if not body:
+            return {}
+
+        result = self._api_request(
+            "PATCH",
+            f"/v3/application/shops/{shop_id}/listings/{listing_id}",
+            json_body=body,
+        )
+        logger.info(
+            "etsy_listing_updated",
+            listing_id=listing_id,
+            shop_id=shop_id,
+            fields=sorted(body.keys()),
+        )
+        return result
+
+    def update_listing_price(self, listing_id: int, price: float) -> dict:
+        """Update an active listing's price via its inventory offerings.
+
+        Etsy stores the price on each product offering, and ``updateListing``'s
+        top-level ``price`` is ignored once a listing has inventory. So we read
+        the current inventory, rewrite every offering's price (preserving
+        quantity, availability, and any variation property values), and PUT it
+        back. ``price`` must already be in the shop's currency.
+        """
+        inv = self._api_request(
+            "GET", f"/v3/application/listings/{listing_id}/inventory"
+        )
+        new_price = round(float(price), 2)
+
+        products = []
+        for prod in inv.get("products", []) or []:
+            offerings = [
+                {
+                    "price": new_price,
+                    "quantity": off.get("quantity", 1),
+                    "is_enabled": off.get("is_enabled", True),
+                }
+                for off in (prod.get("offerings") or [{}])
+            ]
+            property_values = []
+            for pv in prod.get("property_values", []) or []:
+                cleaned = {
+                    "property_id": pv.get("property_id"),
+                    "value_ids": pv.get("value_ids", []),
+                    "values": pv.get("values", []),
+                }
+                if pv.get("scale_id") is not None:
+                    cleaned["scale_id"] = pv.get("scale_id")
+                property_values.append(cleaned)
+            products.append(
+                {
+                    "sku": prod.get("sku") or "",
+                    "property_values": property_values,
+                    "offerings": offerings,
+                }
+            )
+
+        body: dict = {"products": products}
+        # Carry over which properties (if any) price/quantity/sku vary on.
+        for key in ("price_on_property", "quantity_on_property", "sku_on_property"):
+            val = inv.get(key)
+            if val:
+                body[key] = val
+
+        result = self._api_request(
+            "PUT",
+            f"/v3/application/listings/{listing_id}/inventory",
+            json_body=body,
+        )
+        logger.info(
+            "etsy_listing_price_updated", listing_id=listing_id, price=new_price
+        )
+        return result
