@@ -56,7 +56,12 @@ paths:
   fonts_dir: "src/planner/fonts"
 
 dashboard:
-  host: "127.0.0.1"
+  # 0.0.0.0 binds all interfaces so any device on your home WiFi can reach the
+  # dashboard at http://<this-computer-LAN-IP>:5001. This stays LAN-only because
+  # a home router's NAT blocks inbound internet traffic unless you set up port
+  # forwarding. Set DASHBOARD_PASSWORD in .env to require a login (recommended,
+  # since this dashboard can publish to Etsy). Use 127.0.0.1 for localhost-only.
+  host: "0.0.0.0"
   port: 5001
 
 rate_limits:

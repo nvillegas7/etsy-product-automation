@@ -12,6 +12,7 @@ and every path is resolved server-side through the database.
 from __future__ import annotations
 
 import json
+import os
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ import structlog
 import yaml
 from flask import (
     Flask,
+    Response,
     abort,
     flash,
     g,
@@ -439,6 +441,28 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["APP_CONFIG"] = config
     app.config["SESSION_FACTORY"] = session_factory
     app.config["PREVIEW_ROOT"] = preview_root
+
+    # ---------------- optional password protection ----------------
+    # When the dashboard is bound to the LAN (host 0.0.0.0) every device on the
+    # WiFi can reach the approve/reject/publish controls. Set DASHBOARD_PASSWORD
+    # (and optionally DASHBOARD_USER, default "admin") to require HTTP Basic
+    # Auth. If no password is set the dashboard is open -- fine for localhost,
+    # risky on a shared network.
+    dash_password = os.getenv("DASHBOARD_PASSWORD", "").strip()
+    dash_user = os.getenv("DASHBOARD_USER", "admin").strip()
+
+    @app.before_request
+    def _require_auth():
+        if not dash_password:
+            return None
+        auth = request.authorization
+        if auth and auth.username == dash_user and auth.password == dash_password:
+            return None
+        return Response(
+            "Authentication required.",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Product Studio"'},
+        )
 
     # ---------------- session per request ----------------
 
