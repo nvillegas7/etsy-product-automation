@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import structlog
 from sqlalchemy.orm import Session
 
+from src.publisher.currency import convert_usd
 from src.publisher.listing import EtsyListingManager, EtsyAPIError
 from src.storage.models import EtsyListing, Product, ProductState
 from src.storage.repository import EtsyListingRepository, ProductRepository
@@ -44,15 +45,24 @@ class EtsyUploader:
     Each network step is wrapped with retry_with_backoff.
     """
 
-    def __init__(self, listing_manager: EtsyListingManager, session: Session):
+    def __init__(
+        self,
+        listing_manager: EtsyListingManager,
+        session: Session,
+        fx_rates: dict | None = None,
+    ):
         """Initialize with a listing manager and database session.
 
         Args:
             listing_manager: EtsyListingManager for API interactions.
             session: SQLAlchemy session for DB persistence.
+            fx_rates: USD->currency exchange rates (units per 1 USD), used to
+                convert the product's USD price into the shop's currency at
+                publish time. Empty/None is fine for USD-denominated shops.
         """
         self.listing_manager = listing_manager
         self.session = session
+        self.fx_rates = fx_rates or {}
         self.product_repo = ProductRepository(session)
         self.listing_repo = EtsyListingRepository(session)
 
@@ -103,9 +113,23 @@ class EtsyUploader:
 
         tags = json.loads(product.tags) if isinstance(product.tags, str) else (product.tags or [])
 
-        # --- Step 1: Resolve shop ID ---
+        # --- Step 1: Resolve shop ID + currency ---
         self.product_repo.update_state(product.id, ProductState.UPLOAD_PENDING)
         shop_id = self._step_get_shop_id()
+
+        # Etsy prices listings in the shop's currency; our prices are USD.
+        # Convert before creating the draft so a $5.99 planner doesn't list as
+        # 5.99 of a weaker currency. (No-op for USD shops.)
+        shop_currency = self.listing_manager.get_shop_currency()
+        listing_price = convert_usd(product.price_usd, shop_currency, self.fx_rates)
+        if shop_currency != "USD":
+            logger.info(
+                "listing_price_converted",
+                product_id=product.id,
+                price_usd=product.price_usd,
+                shop_currency=shop_currency,
+                listing_price=listing_price,
+            )
 
         etsy_listing_id: int | None = None
         etsy_url: str | None = None
@@ -116,7 +140,7 @@ class EtsyUploader:
                 shop_id=shop_id,
                 title=product.title,
                 description=product.description or "",
-                price=product.price_usd,
+                price=listing_price,
                 taxonomy_id=taxonomy_id,
                 tags=tags,
             )

@@ -38,6 +38,7 @@ class EtsyListingManager:
         self.auth = auth
         self.rate_limiter = rate_limiter
         self._shop_id_cache: int | None = None
+        self._shop_currency_cache: str | None = None
 
     # ------------------------------------------------------------------
     # Low-level request helper
@@ -157,29 +158,57 @@ class EtsyListingManager:
         if self._shop_id_cache is not None:
             return self._shop_id_cache
 
-        # Step 1: Get user ID
+        # Step 1: /users/me returns the user_id and, for shop owners, the
+        # shop_id directly.
         user_resp = self._api_request("GET", "/v3/application/users/me")
         user_id = user_resp.get("user_id")
         if not user_id:
             raise EtsyAPIError("Could not determine user_id from /users/me response.")
 
-        # Step 2: Get shop for that user
-        shop_resp = self._api_request("GET", f"/v3/application/users/{user_id}/shops")
+        # Fast path: /users/me already carries shop_id for shop owners.
+        shop_id = user_resp.get("shop_id")
 
-        # The response wraps shops in a "results" list
-        results = shop_resp.get("results", [])
-        if not results:
-            raise EtsyAPIError(
-                f"No shops found for user {user_id}. Create a shop on Etsy first."
-            )
-
-        shop_id = results[0].get("shop_id")
+        # Step 2: fall back to /users/{user_id}/shops. Etsy returns the shop
+        # object *directly* for a single-shop user (not wrapped in a "results"
+        # envelope); some responses use {"results": [...]} or a bare list.
+        # Handle all three shapes -- the previous code assumed only "results"
+        # and so raised a false "No shops found" for single-shop accounts.
         if not shop_id:
-            raise EtsyAPIError("Shop response missing shop_id.")
+            shop_resp = self._api_request(
+                "GET", f"/v3/application/users/{user_id}/shops"
+            )
+            if isinstance(shop_resp, dict) and shop_resp.get("results"):
+                shop_id = shop_resp["results"][0].get("shop_id")
+            elif isinstance(shop_resp, list) and shop_resp:
+                shop_id = shop_resp[0].get("shop_id")
+            elif isinstance(shop_resp, dict):
+                shop_id = shop_resp.get("shop_id")
+
+        if not shop_id:
+            raise EtsyAPIError(
+                f"No shop found for user {user_id}. Open your Etsy shop first."
+            )
 
         self._shop_id_cache = shop_id
         logger.info("etsy_shop_id_resolved", shop_id=shop_id, user_id=user_id)
         return shop_id
+
+    def get_shop_currency(self) -> str:
+        """Return the shop's ISO currency code (e.g. 'USD', 'PHP'), cached.
+
+        Etsy lists prices in the shop's own currency, so callers convert their
+        USD-authored prices with this before creating a listing. Defaults to
+        'USD' if Etsy omits the field.
+        """
+        if self._shop_currency_cache is not None:
+            return self._shop_currency_cache
+
+        shop_id = self.get_shop_id()
+        resp = self._api_request("GET", f"/v3/application/shops/{shop_id}")
+        currency = (resp.get("currency_code") or "USD").upper()
+        self._shop_currency_cache = currency
+        logger.info("etsy_shop_currency_resolved", shop_id=shop_id, currency=currency)
+        return currency
 
     # ------------------------------------------------------------------
     # Create draft listing
@@ -283,9 +312,14 @@ class EtsyListingManager:
         file_name = path_obj.name
         with open(path_obj, "rb") as fh:
             files = {"file": (file_name, fh, mime_type)}
+            # Etsy's uploadListingFile requires the file name as a separate
+            # "name" form field when uploading a NEW file; without it the API
+            # returns 400 "A valid name must be provided with a new file."
+            data = {"name": file_name}
             result = self._api_request(
                 "POST",
                 f"/v3/application/shops/{shop_id}/listings/{listing_id}/files",
+                data=data,
                 files=files,
             )
 
@@ -363,8 +397,10 @@ class EtsyListingManager:
         Returns:
             Updated listing response dict.
         """
+        # Etsy v3 updateListing is a PATCH; a PUT on this path returns 404
+        # "Resource not found" (the method+path combo isn't routed).
         result = self._api_request(
-            "PUT",
+            "PATCH",
             f"/v3/application/shops/{shop_id}/listings/{listing_id}",
             json_body={"state": "active"},
         )

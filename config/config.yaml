@@ -21,6 +21,13 @@ pricing:
   book_price_usd: 4.99
   min_price_usd: 3.99
   max_price_usd: 14.99
+  # Etsy lists prices in the connected shop's own currency, but the prices
+  # above are authored in USD. When the shop is not USD-denominated the price
+  # is converted at publish time using these USD->currency rates (units of the
+  # target currency per 1 USD). Update periodically as rates drift.
+  # Shop "CouplesVenture" is PHP-denominated.
+  fx_rates:
+    PHP: 56.0
 
 etsy:
   upload_enabled: true   # Disabled until API approval

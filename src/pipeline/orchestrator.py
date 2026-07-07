@@ -1334,7 +1334,11 @@ class PipelineOrchestrator:
                 requests_per_day=int(rate_cfg.get("etsy_requests_per_day", 5000)),
             )
             listing_mgr = EtsyListingManager(auth=auth, rate_limiter=rate_limiter)
-            uploader = EtsyUploader(listing_manager=listing_mgr, session=session)
+            uploader = EtsyUploader(
+                listing_manager=listing_mgr,
+                session=session,
+                fx_rates=self.config.get("pricing", {}).get("fx_rates", {}),
+            )
 
             taxonomy_id = int(
                 os.getenv("ETSY_TAXONOMY_ID", "0")

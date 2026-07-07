@@ -25,18 +25,25 @@ from src.storage.models import EtsyListing, Product, ProductState
 class FakeListingManager:
     """Stands in for EtsyListingManager; records every API call made."""
 
-    def __init__(self):
+    def __init__(self, currency: str = "USD"):
         self.calls: list[str] = []
         self.delivered_file: str | None = None
+        self.currency = currency
+        self.created_price: float | None = None
 
     def get_shop_id(self) -> int:
         self.calls.append("get_shop_id")
         return 111
 
+    def get_shop_currency(self) -> str:
+        self.calls.append("get_shop_currency")
+        return self.currency
+
     def create_draft_listing(
         self, shop_id, title, description, price, taxonomy_id, tags
     ) -> dict:
         self.calls.append("create_draft_listing")
+        self.created_price = price
         return {"listing_id": 222}
 
     def upload_listing_file(self, shop_id, listing_id, file_path, *, bundle_path=None) -> dict:
@@ -208,3 +215,40 @@ class TestUploaderAcceptsApprovedProducts:
         # The buyer receives every colourway (the ZIP), not just the hero PDF.
         assert manager.delivered_file == "/tmp/product_bundle.zip"
         assert manager.delivered_file != product.pdf_path
+
+
+class TestUploaderConvertsPriceToShopCurrency:
+    """The USD product price is converted into the shop's currency at publish."""
+
+    def test_usd_shop_price_unchanged(self, session, make_product):
+        manager = FakeListingManager(currency="USD")
+        uploader = EtsyUploader(listing_manager=manager, session=session)
+        product = make_product(ProductState.APPROVED)  # price_usd = 5.99
+
+        uploader.publish(product, [], taxonomy_id=100)
+
+        assert manager.created_price == 5.99
+
+    def test_non_usd_shop_price_converted(self, session, make_product):
+        manager = FakeListingManager(currency="PHP")
+        uploader = EtsyUploader(
+            listing_manager=manager, session=session, fx_rates={"PHP": 56.0}
+        )
+        product = make_product(ProductState.APPROVED)  # price_usd = 5.99
+
+        uploader.publish(product, [], taxonomy_id=100)
+
+        assert manager.created_price == round(5.99 * 56.0, 2)
+        # The stored USD price is left untouched -- only the listed price converts.
+        assert session.get(Product, product.id).price_usd == 5.99
+
+    def test_missing_rate_raises_before_listing(self, session, make_product):
+        manager = FakeListingManager(currency="PHP")
+        uploader = EtsyUploader(listing_manager=manager, session=session, fx_rates={})
+        product = make_product(ProductState.APPROVED)
+
+        with pytest.raises(Exception, match="exchange rate"):
+            uploader.publish(product, [], taxonomy_id=100)
+
+        # Failed loudly before any draft was created.
+        assert "create_draft_listing" not in manager.calls
