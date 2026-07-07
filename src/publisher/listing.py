@@ -77,9 +77,15 @@ class EtsyListingManager:
             raise EtsyAPIError("Rate limit exceeded — could not acquire token.", status_code=429)
 
         access_token = self.auth.get_valid_token()
+        # Etsy requires the x-api-key header to be "<keystring>:<shared_secret>"
+        # (colon-joined); sending the keystring alone returns 403
+        # "Shared secret is required in x-api-key header."
+        x_api_key = self.auth.api_key
+        if self.auth.shared_secret:
+            x_api_key = f"{self.auth.api_key}:{self.auth.shared_secret}"
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "x-api-key": self.auth.api_key,
+            "x-api-key": x_api_key,
         }
 
         url = f"{ETSY_API_BASE}{path}"
