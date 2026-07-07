@@ -106,7 +106,7 @@ def main():
     auth_url = auth.get_auth_url(
         code_challenge=code_challenge,
         redirect_uri=REDIRECT_URI,
-        scopes=["listings_w", "listings_r", "listings_d"],
+        scopes=["listings_w", "listings_r", "listings_d", "shops_r"],
     )
 
     print()

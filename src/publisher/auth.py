@@ -77,7 +77,7 @@ class EtsyAuth:
             Fully-formed authorization URL the user should open in a browser.
         """
         if scopes is None:
-            scopes = ["listings_w", "listings_r", "listings_d"]
+            scopes = ["listings_w", "listings_r", "listings_d", "shops_r"]
 
         state = secrets.token_urlsafe(24)
         scope_str = " ".join(scopes)

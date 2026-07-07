@@ -23,7 +23,7 @@ pricing:
   max_price_usd: 14.99
 
 etsy:
-  upload_enabled: false   # Disabled until API approval
+  upload_enabled: true   # Disabled until API approval
   # Publish to Etsy immediately when a reviewer approves a product —
   # approval IS the manual gate. Only takes effect while uploads are
   # enabled (upload_enabled true, credentials present, and the
