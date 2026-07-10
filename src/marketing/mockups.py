@@ -272,6 +272,151 @@ def _color_options_strip(canvas: Image.Image, palettes: list[str], x: int, y: in
 
 
 # ---------------------------------------------------------------------------
+# Hyperlink merchandising (P3): real link count + navigation mockups
+# ---------------------------------------------------------------------------
+
+def _count_hyperlinks(doc) -> int:
+    """Total embedded links across all pages -- the REAL navigation count.
+
+    Never a hardcoded literal: this reads the actual link annotations from the
+    rendered PDF, so the "2,400+ hyperlinks" chip is always truthful.
+    """
+    try:
+        return sum(len(page.get_links()) for page in doc)
+    except Exception:
+        return 0
+
+
+def _round_down_hundred(n: int) -> int:
+    return (n // 100) * 100 if n >= 100 else n
+
+
+def _arrow(draw: ImageDraw.ImageDraw, start: tuple[int, int],
+           end: tuple[int, int], color: tuple[int, int, int],
+           width: int = 12) -> None:
+    """A straight arrow from *start* to *end* with a small arrowhead."""
+    draw.line([start, end], fill=color, width=width)
+    ang = math.atan2(end[1] - start[1], end[0] - start[0])
+    head = 40
+    for da in (math.radians(148), math.radians(-148)):
+        hx = end[0] + head * math.cos(ang + da)
+        hy = end[1] + head * math.sin(ang + da)
+        draw.line([end, (hx, hy)], fill=color, width=width)
+
+
+def _nav_indices(n_pages: int) -> list[int]:
+    """Cover -> index -> a month -> a weekly page (clamped to the doc)."""
+    return [min(i, n_pages - 1) for i in (0, 1, 3, 6)]
+
+
+def _compose_navmap(doc, palette: dict, link_count: int) -> Image.Image:
+    """P3 nav-map: page thumbnails + flow arrows + a real hyperlink-count chip."""
+    canvas = _make_background(palette)
+    draw = ImageDraw.Draw(canvas)
+
+    heading = "TAP ANYTHING — JUMP ANYWHERE"
+    hfont = _font(80, bold=True, serif=True)
+    tw, _ = _text_size(draw, heading, hfont)
+    draw.text(((CANVAS_W - tw) // 2, 120), heading, font=hfont, fill=palette["text"])
+
+    labels = ["COVER", "INDEX", "MONTH", "WEEK"]
+    idxs = _nav_indices(len(doc))
+    thumb_w = 500
+    margin = 170
+    gap = (CANVAS_W - 2 * margin - 4 * thumb_w) / 3
+    top = 400
+    centers: list[tuple[int, int, int]] = []
+    cap_font = _font(40, bold=True)
+    for i, idx in enumerate(idxs):
+        img = _render_page(doc, idx, thumb_w)
+        x = margin + i * (thumb_w + gap)
+        cx = int(x + thumb_w / 2)
+        cy = top + img.height // 2
+        _paste_with_shadow(canvas, img, (cx, cy))
+        centers.append((cx, cy, img.height))
+        cw, _ = _text_size(draw, labels[i], cap_font)
+        draw.text((cx - cw // 2, top + img.height + 34), labels[i],
+                  font=cap_font, fill=_blend(palette["text"], palette["primary"], 0.3))
+
+    arrow_c = _blend(palette["primary"], palette["text"], 0.1)
+    ay = top + centers[0][2] // 2
+    for i in range(len(centers) - 1):
+        x0 = centers[i][0] + thumb_w // 2 + 24
+        x1 = centers[i + 1][0] - thumb_w // 2 - 24
+        _arrow(draw, (x0, ay), (x1, ay), arrow_c, width=12)
+
+    _stat_chip(canvas, CANVAS_W // 2, CANVAS_H - 470,
+               f"{_round_down_hundred(link_count):,}+", "WORKING HYPERLINKS", palette)
+    return canvas
+
+
+def _stat_chip(canvas: Image.Image, cx: int, y: int, big: str, small: str,
+               palette: dict) -> None:
+    """A rounded plate with a big number over a small caption."""
+    draw = ImageDraw.Draw(canvas)
+    bfont = _font(150, bold=True, serif=True)
+    sfont = _font(50, bold=True)
+    bw, bh = _text_size(draw, big, bfont)
+    sw, sh = _text_size(draw, small, sfont)
+    w = max(bw, sw) + 200
+    h = bh + sh + 150
+    x = cx - w // 2
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=70, fill=palette["primary"])
+    draw.text((cx - bw // 2, y + 44), big, font=bfont, fill=(255, 255, 255))
+    draw.text((cx - sw // 2, y + h - sh - 46), small, font=sfont,
+              fill=_blend(palette["accent"], (255, 255, 255), 0.55))
+
+
+def _compose_filmstrip(doc, palette: dict) -> Image.Image:
+    """P3 filmstrip: cover -> index -> month tab -> weekly, as a film strip."""
+    canvas = _make_background(palette)
+    draw = ImageDraw.Draw(canvas)
+
+    heading = "EVERY PAGE, ONE TAP AWAY"
+    hfont = _font(80, bold=True, serif=True)
+    tw, _ = _text_size(draw, heading, hfont)
+    draw.text(((CANVAS_W - tw) // 2, 130), heading, font=hfont, fill=palette["text"])
+
+    strip_x0, strip_x1 = 90, CANVAS_W - 90
+    strip_y, strip_h = 560, 900
+    draw.rectangle([strip_x0, strip_y, strip_x1, strip_y + strip_h], fill=(34, 32, 36))
+    # Sprocket holes top + bottom
+    for sx in range(strip_x0 + 60, strip_x1 - 40, 118):
+        draw.rounded_rectangle([sx, strip_y + 26, sx + 58, strip_y + 70],
+                               radius=12, fill=(232, 230, 226))
+        draw.rounded_rectangle([sx, strip_y + strip_h - 70, sx + 58, strip_y + strip_h - 26],
+                               radius=12, fill=(232, 230, 226))
+
+    labels = ["COVER", "INDEX", "MONTH TAB", "WEEKLY"]
+    idxs = _nav_indices(len(doc))
+    frame_h = strip_h - 300
+    inner_x0 = strip_x0 + 70
+    span = (strip_x1 - 70) - inner_x0
+    cap_font = _font(38, bold=True)
+    for i, idx in enumerate(idxs):
+        slot_w = span / 4
+        img = _render_page(doc, idx, int(slot_w - 60))
+        if img.height > frame_h:
+            img = img.resize((round(img.width * frame_h / img.height), frame_h),
+                             Image.LANCZOS)
+        cx = int(inner_x0 + slot_w * i + slot_w / 2)
+        cy = strip_y + 130 + img.height // 2
+        _paste_with_shadow(canvas, img, (cx, cy), border=True)
+        cw, _ = _text_size(draw, labels[i], cap_font)
+        draw.text((cx - cw // 2, strip_y + strip_h - 150), labels[i],
+                  font=cap_font, fill=(232, 230, 226))
+        if i < len(idxs) - 1:
+            ax = int(inner_x0 + slot_w * (i + 1))
+            _arrow(draw, (ax - 30, cy), (ax + 30, cy),
+                   _blend(palette["accent"], (255, 255, 255), 0.3), width=10)
+
+    _badge(canvas, "Cover · Index · 12 Months · 52 Weeks — all linked",
+           CANVAS_W // 2, CANVAS_H - 210,
+           _blend(palette["primary"], palette["text"], 0.1), font_size=46)
+    return canvas
+
+
+# ---------------------------------------------------------------------------
 # Page selection
 # ---------------------------------------------------------------------------
 
@@ -641,7 +786,7 @@ def generate_listing_images(
     palette_name: str | None = None,
     palettes: list[str] | None = None,
     design_name: str | None = None,
-    max_images: int = 5,
+    max_images: int = 8,
 ) -> list[Path]:
     """Compose up to *max_images* Etsy listing images for *pdf_path*.
 
@@ -678,6 +823,13 @@ def generate_listing_images(
         lambda: _compose_hero(doc, palette, title, product_type, design_label,
                               bundle),
     ]
+    # Planners lead with the hyperlink-merchandising pair (P3): a nav-map with
+    # the REAL link count and a cover->index->month->weekly filmstrip. Picture
+    # books have no hyperlink graph, so they skip both and stay at five images.
+    if product_type == "planner":
+        link_count = _count_hyperlinks(doc)
+        compositions.append(lambda: _compose_navmap(doc, palette, link_count))
+        compositions.append(lambda: _compose_filmstrip(doc, palette))
     if bundle:
         compositions.append(
             lambda: _compose_color_options(doc, palette, bundle, title)

@@ -49,6 +49,7 @@ class ListingSEO:
         year: int,
         palette_name: str | None = None,
         keywords: list[str] | None = None,
+        date_label: str | None = None,
     ) -> str:
         """Generate an SEO-optimized listing title (max 140 chars).
 
@@ -60,12 +61,16 @@ class ListingSEO:
             year: Publication year.
             palette_name: Optional colour palette name for visual appeal.
             keywords: Additional niche keywords to weave in.
+            date_label: Overrides the leading year for academic / date-trio
+                listings, e.g. "2026-2027 2027-2028 & Undated". ``None`` keeps
+                the plain ``{year}`` used by single calendar-year planners.
 
         Returns:
             Title string, guaranteed <= 140 characters.
         """
-        # Core part (always present)
-        core = f"{year} {niche_name} Digital Planner"
+        # Core part (always present). Leads with "Hyperlinked" -- our verified
+        # structural moat (~2,400+ working links vs competitors' manual work).
+        core = f"Hyperlinked {date_label or year} {niche_name} Digital Planner"
         suffix = "iPad GoodNotes Notability"
 
         # Pick the best extra keyword that isn't already covered by the niche
@@ -103,6 +108,7 @@ class ListingSEO:
         year: int,
         features: list[str] | None = None,
         palettes: list[str] | None = None,
+        date_label: str | None = None,
     ) -> str:
         """Generate a rich, SEO-friendly listing description.
 
@@ -128,10 +134,18 @@ class ListingSEO:
         sections: list[str] = []
 
         # --- Hook line ---
-        hook = f"Plan your best year yet with the {year} {name}!"
+        hook = f"Plan your best year yet with the {date_label or year} {name}!"
         if subtitle:
             hook += f" {subtitle}."
         sections.append(hook)
+
+        # --- Date options (date-trio bundle only) ---
+        if date_label and ("&" in date_label or "undated" in date_label.lower()):
+            sections.append(
+                "DATE OPTIONS:\n"
+                f"  Includes {date_label} versions in one download — use the "
+                "dated year you need now and the undated version any year."
+            )
 
         # --- Colour options (multi-palette bundle only) ---
         distinct = _distinct_palettes(palettes)
@@ -154,7 +168,8 @@ class ListingSEO:
         # --- Included pages ---
         included = [
             "Hyperlinked yearly overview",
-            "Monthly calendar spreads (Jan - Dec)",
+            ("Monthly calendar spreads (12 months)" if date_label
+             else "Monthly calendar spreads (Jan - Dec)"),
             "Weekly planning pages",
             "Notes & brain-dump pages",
             "Goal-setting worksheets",
@@ -224,6 +239,7 @@ class ListingSEO:
         keywords: list[str],
         niche_name: str,
         year: int | None = None,
+        date_label: str | None = None,
     ) -> list[str]:
         """Generate exactly 13 unique, lowercase tags (each <= 20 chars).
 
@@ -250,6 +266,15 @@ class ListingSEO:
         for kw in keywords:
             raw_tags.append(kw.lower().strip())
 
+        # Date-mode tags: a clean year span ("2026 2027") + the strong "undated"
+        # term the single-year keyword set does not otherwise cover.
+        if date_label:
+            tokens = date_label.split()
+            if tokens and tokens[0][:1].isdigit():
+                raw_tags.append(tokens[0].replace("-", " "))  # "2026-2027" -> "2026 2027"
+            if "undated" in date_label.lower():
+                raw_tags.append("undated planner")
+
         # Broad platform / category tags
         broad = [
             "digital planner",
@@ -264,11 +289,13 @@ class ListingSEO:
         ]
         raw_tags.extend(broad)
 
-        # Clean and enforce per-tag limits
+        # Clean and enforce per-tag limits. Hyphens become spaces (not deleted)
+        # so a year span like "2026-2027" degrades to the searchable "2026 2027"
+        # rather than the unsearchable "20262027".
         cleaned: list[str] = []
         seen_normalised: set[str] = set()
         for tag in raw_tags:
-            tag = re.sub(r"[^\w\s]", "", tag).strip()
+            tag = re.sub(r"[^\w\s]", "", tag.replace("-", " ")).strip()
             if len(tag) > MAX_TAG_LENGTH:
                 tag = tag[:MAX_TAG_LENGTH].rstrip()
             if not tag:

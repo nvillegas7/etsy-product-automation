@@ -1,6 +1,9 @@
 # Product Generation Enhancement Plan — July 2026
 
-**Status: PLAN ONLY — nothing here is implemented yet.**
+**Status: Wave 1 (P1–P3) IMPLEMENTED 2026-07-10; Waves 2–5 are still plan-only.**
+Wave 1 shipped academic-year builds, the date-mode trio, and hyperlink-merchandising
+mockups + realized pricing (see the Wave 1 table below). The golden classic stays
+byte-identical; nothing auto-publishes (generation still stops at REVIEW_PENDING).
 
 Produced 2026-07-10 from a 32-agent deep-research run: 5 market researchers
 (planner demand, visual aesthetics, kids products, adjacent product types,

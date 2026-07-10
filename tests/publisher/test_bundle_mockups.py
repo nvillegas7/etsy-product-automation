@@ -44,19 +44,20 @@ def _render(pdf, out_dir, product_id, **kwargs):
 
 class TestBundleMockups:
     def test_bundle_adds_color_options_image(self, planner_pdf, tmp_path):
+        # Planner bundle: hero + navmap + filmstrip + colour-options + 4 = 8 (P3).
         paths = _render(
             planner_pdf,
             tmp_path,
             product_id=1,
             palettes=["ocean_blue", "soft_sage", "dusty_rose"],
         )
-        assert len(paths) == 5
+        assert len(paths) == 8
         for i, p in enumerate(paths):
             assert p.name == f"product_1_mockup_{i}.png"
             with Image.open(p) as img:
                 assert img.size == (CANVAS_W, CANVAS_H)
 
-    def test_bundle_hero_and_second_image_differ_from_single(
+    def test_bundle_adds_one_image_and_changes_hero(
         self, planner_pdf, tmp_path
     ):
         single = _render(planner_pdf, tmp_path / "single", product_id=2)
@@ -66,11 +67,12 @@ class TestBundleMockups:
             product_id=2,
             palettes=["ocean_blue", "soft_sage", "dusty_rose", "classic_boho"],
         )
+        # The bundle inserts exactly one extra image (the colour-options page).
+        assert len(bundle) == len(single) + 1
         # Hero gains a swatch strip -> the pixels change.
         assert single[0].read_bytes() != bundle[0].read_bytes()
-        # Image #1 is interiors for a single palette but the colour-options
-        # image for a bundle.
-        assert single[1].read_bytes() != bundle[1].read_bytes()
+        # Colour-options sits after the hyperlink mockups, shifting interiors.
+        assert single[3].read_bytes() != bundle[3].read_bytes()
 
     def test_single_palette_unchanged(self, planner_pdf, tmp_path):
         """One palette (or a duplicate list) is not a bundle: no new image."""
@@ -84,7 +86,7 @@ class TestBundleMockups:
             product_id=3,
             palettes=["ocean_blue", "ocean_blue"],
         )
-        assert len(none_paths) == len(one_paths) == len(dup_paths) == 5
+        assert len(none_paths) == len(one_paths) == len(dup_paths) == 7
         for a, b in zip(none_paths, one_paths):
             assert a.read_bytes() == b.read_bytes()
         for a, b in zip(none_paths, dup_paths):

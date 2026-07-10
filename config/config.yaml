@@ -15,12 +15,25 @@ planner:
   # palettes (all pre-generated, delivered as one ZIP). Set false to fall
   # back to single-palette planners (one rotated palette, no bundle zip).
   palette_bundle: true
+  # Seasonal priority: these niches are generated ahead of the normal
+  # scorer/rotation until each has a product newer than priority_fresh_days.
+  # Empty list => normal rotation. Set for the back-to-school window so the
+  # academic teacher/student builds ship first. Clear it once the season ends.
+  priority_niches:
+    - "teacher_planner"
+    - "student_planner"
+  priority_fresh_days: 14
 
 pricing:
-  default_price_usd: 5.99
-  book_price_usd: 4.99
-  min_price_usd: 3.99
-  max_price_usd: 14.99
+  # Realized Etsy prices sit in the $7-16 band after discount culture, so
+  # planners anchor at a $19.99 LIST price paired with a standing ~30% shop
+  # sale (~$13.99 realized) that is set MANUALLY in Etsy Shop Manager --
+  # our API has no sale/discount endpoint. Flagship hero listings can be
+  # bumped to $24.99 via a per-product dashboard override.
+  default_price_usd: 19.99   # planner bundle LIST price
+  book_price_usd: 6.99
+  min_price_usd: 4.99        # floor
+  max_price_usd: 24.99       # flagship ceiling
   # Etsy lists prices in the connected shop's own currency, but the prices
   # above are authored in USD. When the shop is not USD-denominated the price
   # is converted at publish time using these USD->currency rates (units of the

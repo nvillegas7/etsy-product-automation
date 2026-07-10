@@ -510,12 +510,15 @@ def render_pennant(
     year: int,
     x: float | None = None,
     y: float | None = None,
+    year_text: str | None = None,
 ) -> None:
     """Pennant flag with the month name + year, hanging off the top.
 
     The text styling is voice-aware; the classic/serif voices keep the
-    script month + Inter Bold year exactly as before.
+    script month + Inter Bold year exactly as before.  ``year_text`` overrides
+    the printed year (e.g. ``"20__"`` for undated builds).
     """
+    year_str = str(year) if year_text is None else year_text
     from src.planner.layout import PENNANT_X, PENNANT_Y, PENNANT_W, PENNANT_H, PENNANT_NOTCH
 
     px = PENNANT_X if x is None else x
@@ -562,7 +565,7 @@ def render_pennant(
             pass
         pdf.set_font(theme.body, "", 8)
         pdf.set_xy(px, py + 11)
-        pdf.cell(w, 8, str(year), align="C")
+        pdf.cell(w, 8, year_str, align="C")
     elif voice == "typewriter":
         size = fit_text(pdf, month_name.upper(), "Courier", "B", 9,
                         w - 4, min_size=6.5)
@@ -571,7 +574,7 @@ def render_pennant(
         pdf.cell(w, 8, month_name.upper(), align="C")
         pdf.set_font("Courier", "", 8)
         pdf.set_xy(px, py + 11)
-        pdf.cell(w, 8, str(year), align="C")
+        pdf.cell(w, 8, year_str, align="C")
     elif voice == "script":
         size = fit_text(pdf, month_name, theme.script, "", 18, w - 4,
                         min_size=9)
@@ -580,7 +583,7 @@ def render_pennant(
         pdf.cell(w, 8, month_name, align="C")
         pdf.set_font(theme.body, "I", 10)
         pdf.set_xy(px, py + 10.5)
-        pdf.cell(w, 8, str(year), align="C")
+        pdf.cell(w, 8, year_str, align="C")
     else:   # classic / serif -- exact pre-design rendering
         size = fit_text(pdf, month_name, theme.script, "",
                         theme.fonts.size_pennant, w - 4, min_size=9)
@@ -589,7 +592,7 @@ def render_pennant(
         pdf.cell(w, 8, month_name, align="C")
         pdf.set_font(theme.body, "B", 11)
         pdf.set_xy(px, py + 10.5)
-        pdf.cell(w, 8, str(year), align="C")
+        pdf.cell(w, 8, year_str, align="C")
     pdf.set_text_color(0, 0, 0)
 
 

@@ -60,10 +60,11 @@ def _stub_heavy_steps(monkeypatch, tmp_path):
     pdf_dir = tmp_path / "pdfs"
     pdf_dir.mkdir(exist_ok=True)
 
-    def fake_render(self, product, niche_cfg, palette_name=None):
+    def fake_render(self, product, niche_cfg, palette_name=None, date_mode="dated"):
         palette = palette_name or product.palette_name
-        path = pdf_dir / f"product_{product.id}_{palette}.pdf"
-        path.write_bytes(f"PDF for {palette}".encode())
+        suffix = "" if date_mode == "dated" else f"_{date_mode}"
+        path = pdf_dir / f"product_{product.id}_{palette}{suffix}.pdf"
+        path.write_bytes(f"PDF for {palette} {date_mode}".encode())
         return path
 
     monkeypatch.setattr(
@@ -182,3 +183,70 @@ class TestSinglePaletteFallback:
         assert palettes[0] == p.palette_name
         assert p.bundle_path is None
         assert p.pdf_path.endswith(f"_{p.palette_name}.pdf")
+
+
+# ---------------------------------------------------------------------------
+# P2: date-mode trio (academic teacher/student)
+# ---------------------------------------------------------------------------
+
+
+class TestDateTrio:
+    def test_builds_matrix_is_hero_x3_plus_others_x2(self, session_factory, tmp_path):
+        orch = PipelineOrchestrator(_make_config(tmp_path), session_factory)
+        palettes = ["hero", "b", "c"]
+        assert orch._planner_builds({"date_trio": True}, palettes) == [
+            ("hero", "dated"), ("hero", "dated_next"), ("hero", "undated"),
+            ("b", "dated_next"), ("b", "undated"),
+            ("c", "dated_next"), ("c", "undated"),
+        ]
+
+    def test_non_trio_is_one_dated_pdf_per_palette(self, session_factory, tmp_path):
+        orch = PipelineOrchestrator(_make_config(tmp_path), session_factory)
+        assert orch._planner_builds({}, ["hero", "b"]) == [
+            ("hero", "dated"), ("b", "dated")
+        ]
+
+    def test_trio_niche_zips_all_date_versions(
+        self, session_factory, tmp_path, monkeypatch
+    ):
+        from pathlib import Path
+
+        _stub_heavy_steps(monkeypatch, tmp_path)
+        config = _make_config(tmp_path)
+        config["planner"]["priority_niches"] = ["teacher_planner"]  # force trio niche
+        orch = PipelineOrchestrator(config, session_factory)
+        product = orch.run_once(product_type="planner")
+
+        p = _reload(session_factory, product.id)
+        palettes = json.loads(p.palettes)
+        with zipfile.ZipFile(Path(p.bundle_path)) as zf:
+            names = zf.namelist()
+
+        # hero x3 date modes + each other colorway x2.
+        assert len(names) == 3 + 2 * (len(palettes) - 1)
+        assert any("2026-2027" in n for n in names)   # this school year
+        assert any("2027-2028" in n for n in names)   # next school year
+        assert any("undated" in n for n in names)
+        # Hero preview PDF is the dated (2026-2027) build.
+        assert p.pdf_path is not None
+
+    def test_trio_delivered_even_when_palette_bundle_disabled(
+        self, session_factory, tmp_path, monkeypatch
+    ):
+        from pathlib import Path
+
+        _stub_heavy_steps(monkeypatch, tmp_path)
+        config = _make_config(tmp_path, palette_bundle=False)
+        config["planner"]["priority_niches"] = ["teacher_planner"]
+        orch = PipelineOrchestrator(config, session_factory)
+        product = orch.run_once(product_type="planner")
+
+        p = _reload(session_factory, product.id)
+        # Single palette, but 3 date modes -> the trio must still be zipped,
+        # not silently dropped to just the hero PDF.
+        assert p.bundle_path is not None
+        with zipfile.ZipFile(Path(p.bundle_path)) as zf:
+            names = zf.namelist()
+        assert len(names) == 3
+        assert any("2026-2027" in n for n in names)
+        assert any("undated" in n for n in names)

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import calendar as _cal
 import math
+import re
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
@@ -77,12 +78,85 @@ class PageContext:
     nav: NavigationManager
     tabs: list[tuple[str, str]] = field(default_factory=list)  # (label, key)
     year: int = 2026
+    # Academic-year + date-mode display state.  Defaults keep today's output:
+    #   year_label  : cover/year span override ("2026-2027"); "" -> str(year)
+    #   month_years : calendar-month(1..12) -> the actual year that month falls
+    #                 in for this build; None -> every month uses ``year``
+    #   undated     : blank day-level dates + year suffix (fill-in planner)
+    year_label: str = ""
+    month_years: dict[int, int] | None = None
+    undated: bool = False
+    start_month: int = 1           # first month of the plan (8 = academic)
     brand: str = "Made with love"
     design: DesignTheme = field(default_factory=DesignTheme)
     geo: Geometry = field(default_factory=lambda: build_geometry("binder"))
     motif: MotifFamily = field(default_factory=lambda: MOTIFS["botanical"])
     deferred_subtitle: str = ""    # poster shell: subtitle merges into back link
     corner_action_key: str = ""    # target of the shell's corner button, if any
+
+
+def _year_display(ctx: PageContext) -> str:
+    """Readable year text for covers / year-at-a-glance.
+
+    Returns the span label ("2026-2027") when set, else the anchor year.
+    Decorative artwork seeds keep using the raw int ``ctx.year`` -- never this
+    -- so the golden classic stays byte-identical.
+    """
+    return ctx.year_label or str(ctx.year)
+
+
+def _fit_year(pdf: FPDF, ctx: PageContext, family: str, style: str,
+              max_size: float, max_w: float, min_size: float) -> str:
+    """Cover year text sized to fit an oversized numeral slot.
+
+    Sets the font at the largest size (<= *max_size*) where the date-mode
+    label fits *max_w*, and returns the text.  A single year keeps its full
+    size (byte-identical for non-academic builds); a span ("2026-2027") or
+    "Undated" shrinks instead of overflowing the page.
+    """
+    yr = _year_display(ctx)
+    fit_text(pdf, yr, family, style, max_size, max_w, min_size=min_size)
+    return yr
+
+
+def _month_year(ctx: PageContext, month: int) -> int:
+    """The calendar year that calendar-*month* (1..12) falls in for this build.
+
+    Academic builds span two years; ``month_years`` maps each month to its
+    year.  ``None`` (the default) means every month uses the anchor ``year``.
+    """
+    if ctx.month_years:
+        return ctx.month_years.get(month, ctx.year)
+    return ctx.year
+
+
+def _slot_order(ctx: PageContext) -> list[int]:
+    """The 12 calendar months in this build's reading order (academic-aware).
+
+    ``start_month=1`` -> ``[1, 2, ..., 12]`` (byte-identical to the old
+    ``range(1, 13)``); ``start_month=8`` -> ``[8, 9, ..., 12, 1, ..., 7]``.
+    """
+    return [(ctx.start_month - 1 + i) % 12 + 1 for i in range(12)]
+
+
+def _month_year_label(ctx: PageContext, month: int) -> str:
+    """The year text drawn beside a month name -- ``"20__"`` for undated."""
+    if ctx.undated:
+        return "20__"
+    return str(_month_year(ctx, month))
+
+
+def _grid_weeks(ctx: PageContext, month: int) -> list[list[int]]:
+    """Month-calendar weeks for the day grid.
+
+    Dated builds get the real calendar; undated builds get a same-shape grid
+    of zeros so the boxes stay blank (fill-in) while the grid lines, weekday
+    columns, and page/link structure are unchanged.
+    """
+    weeks = _cal.monthcalendar(_month_year(ctx, month), month)
+    if ctx.undated:
+        return [[0] * 7 for _ in weeks]
+    return weeks
 
 
 def begin_content_page(
@@ -134,8 +208,9 @@ def page_header(
 
     if style == "pennant":
         if month is not None:
-            render_pennant(pdf, theme, month, ctx.year,
-                           x=geo.pennant_x, y=geo.pennant_y)
+            render_pennant(pdf, theme, month, _month_year(ctx, month),
+                           x=geo.pennant_x, y=geo.pennant_y,
+                           year_text=_month_year_label(ctx, month))
             tx = geo.pennant_x + PENNANT_W + 9
         else:
             tx = geo.left_x
@@ -173,7 +248,7 @@ def page_header(
 
     else:   # "plain" (poster)
         if month is not None:
-            month_line = f"{_cal.month_name[month].upper()} · {ctx.year}"
+            month_line = f"{_cal.month_name[month].upper()} · {_month_year_label(ctx, month)}"
             pdf.set_font(theme.body, "B", 7)
             try:
                 # Month names are searchable content: clamp the small-caps
@@ -240,20 +315,30 @@ def _numbered_priority_lines(pdf: FPDF, theme: Theme, panel: Panel,
 # 1. CoverPage (D6 -- cover compositions)
 # ===================================================================
 
+# Leading "2026", "2026-2027", or "2026 2027" (+ trailing separator) on a title.
+# The (?!\d) guards keep a longer number (e.g. "10000 Steps") from partial-matching.
+_LEADING_YEAR = re.compile(
+    r"^\s*\d{4}(?!\d)(?:\s*[-–─]\s*\d{4}(?!\d)|\s+\d{4}(?!\d))?\s*[-–·]?\s*"
+)
+
+
 def _shown_title(ctx: PageContext, title: str, display_title: str) -> str:
-    """Strip a leading year from the title (the year accent shows it)."""
+    """Strip a leading year / year-span from the title (the year accent shows it).
+
+    Handles ``"2026 Planner"``, ``"2026-2027 Teacher Planner"`` and
+    ``"2026 2027 Planner"`` so the cover never double-prints the year -- even
+    when the date mode's label ("Undated") differs from the title's year.
+    """
     shown = (display_title or title).strip()
-    if shown.startswith(str(ctx.year)):
-        stripped = shown[len(str(ctx.year)):].strip(" -·")
-        if stripped:
-            shown = stripped
-    return shown
+    stripped = _LEADING_YEAR.sub("", shown).strip(" -·")
+    return stripped or shown
 
 
-def _cover_year_text(theme: Theme, year: int) -> str:
+def _cover_year_text(theme: Theme, ctx: PageContext) -> str:
+    year = _year_display(ctx)
     if theme.design.voice == "typewriter":
-        return "- " + " ".join(str(year)) + " -"
-    return str(year)
+        return "- " + " ".join(year) + " -"
+    return year
 
 
 def _niche_pill(pdf: FPDF, theme: Theme, label: str, y: float,
@@ -375,7 +460,7 @@ def _arch_classic(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
     pdf.set_text_color(*blend(pr, theme.rgb("text"), 0.1))
     theme.set_type(pdf, "cover_year")
     pdf.set_xy(card.x, card.y + 10)
-    pdf.cell(card.w, 12, _cover_year_text(theme, ctx.year), align="C")
+    pdf.cell(card.w, 12, _cover_year_text(theme, ctx), align="C")
 
     # Display title -- shrink then wrap to max 2 lines; never clip.
     lines, size = _fit_title_lines(pdf, theme, shown, max_w, max_lines=2,
@@ -445,7 +530,7 @@ def _arch_meadow(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
     pdf.set_text_color(*blend(pr, theme.rgb("text"), 0.1))
     theme.set_type(pdf, "cover_year")
     pdf.set_xy(cx - max_w / 2, 34.0)
-    pdf.cell(max_w, 12, _cover_year_text(theme, ctx.year), align="C")
+    pdf.cell(max_w, 12, _cover_year_text(theme, ctx), align="C")
 
     shown = _shown_title(ctx, title, display_title)
     lines, size = _fit_title_lines(pdf, theme, shown, max_w, max_lines=2,
@@ -560,7 +645,7 @@ def _band_left(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
     else:
         theme.set_type(pdf, "cover_year")
     pdf.set_xy(0, 52)
-    pdf.cell(band_w, 14, _cover_year_text(theme, ctx.year), align="C")
+    pdf.cell(band_w, 14, _cover_year_text(theme, ctx), align="C")
 
     shown = _shown_title(ctx, title, display_title)
     lines, size = _fit_band_title(pdf, theme, shown, 140.0)
@@ -619,7 +704,7 @@ def _band_top(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
     else:
         theme.set_type(pdf, "cover_year")
     pdf.set_xy(x1 - 110, band_h / 2 - 6)
-    pdf.cell(110, 12, _cover_year_text(theme, ctx.year), align="R")
+    pdf.cell(110, 12, _cover_year_text(theme, ctx), align="R")
     try:
         pdf.set_char_spacing(0)
     except Exception:
@@ -642,11 +727,11 @@ def _band_top(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
     # Oversized faint year stamp anchoring the open field (typewriter
     # voice), like a ledger's date impression -- fills the middle so the
     # page no longer reads bottom-right-heavy with an empty upper-left.
-    pdf.set_font("Courier", "B", 116)
+    yr = _fit_year(pdf, ctx, "Courier", "B", 116, 356, 44)
     with pdf.local_context(fill_opacity=0.07):
         pdf.set_text_color(*pr)
         pdf.set_xy(x0 - 6, 150.0)
-        pdf.cell(360, 74, str(ctx.year))
+        pdf.cell(360, 74, yr)
 
     # Motif triangle field as a full-width footer, grounding the page; a
     # fine rule caps it so it reads as a deliberate band, not a stray block.
@@ -697,11 +782,11 @@ def _band_spine(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
 
     # Ghost numeral top-right (honest light-color glyphs)
     ghost = blend(pr, theme.rgb("background"), 0.85)
-    pdf.set_font(theme.display, "B", 150)
     pdf.set_text_color(*ghost)
-    yw = pdf.get_string_width(str(ctx.year))
+    yr = _fit_year(pdf, ctx, theme.display, "B", 150, PAGE_WIDTH - 90, 78)
+    yw = pdf.get_string_width(yr)
     pdf.set_xy(PAGE_WIDTH - 30 - yw, 34)
-    pdf.cell(yw + 2, 60, str(ctx.year), align="R")
+    pdf.cell(yw + 2, 60, yr, align="R")
 
     # Title in ink on the open field, mid-page
     shown = _shown_title(ctx, title, display_title)
@@ -735,7 +820,7 @@ def _band_spine(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
         pass
     pdf.set_text_color(*blend(theme.rgb("text"), pr, 0.35))
     pdf.set_xy(x0, ty + 34)
-    pdf.cell(120, 6, str(ctx.year))
+    pdf.cell(120, 6, _year_display(ctx))
     try:
         pdf.set_char_spacing(0)
     except Exception:
@@ -772,11 +857,11 @@ def _band_solid(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
 
     # Giant ghost numeral, centered high (honest lighter-than-plate glyphs)
     ghost = blend(pr, WHITE, 0.22)
-    pdf.set_font(theme.display, "B", 210)
     pdf.set_text_color(*ghost)
-    yw = pdf.get_string_width(str(ctx.year))
+    yr = _fit_year(pdf, ctx, theme.display, "B", 210, PAGE_WIDTH - 60, 90)
+    yw = pdf.get_string_width(yr)
     pdf.set_xy(PAGE_WIDTH / 2 - yw / 2, 58)
-    pdf.cell(yw + 2, 84, str(ctx.year), align="C")
+    pdf.cell(yw + 2, 84, yr, align="C")
 
     # Motif strip above the title
     ctx.motif.band(pdf, theme, x0, 224.0, 200.0)
@@ -888,19 +973,19 @@ def _editorial_asymmetric(pdf: FPDF, ctx: PageContext, title: str,
         pass
     pdf.set_text_color(*blend(theme.rgb("text"), pr, 0.35))
     pdf.set_xy(x0, bar_y + 12)
-    pdf.cell(120, 6, str(ctx.year))
+    pdf.cell(120, 6, _year_display(ctx))
     try:
         pdf.set_char_spacing(0)
     except Exception:
         pass
 
     # Ghost year, honest low-opacity glyphs
-    pdf.set_font(theme.display, "B", 96)
     pdf.set_text_color(*pr)
+    yr = _fit_year(pdf, ctx, theme.display, "B", 96, 320, 48)
     with pdf.local_context(fill_opacity=0.18):
-        yw = pdf.get_string_width(str(ctx.year))
+        yw = pdf.get_string_width(yr)
         pdf.set_xy(x1 - yw - 2, 330 - 34)
-        pdf.cell(yw + 2, 36, str(ctx.year), align="R")
+        pdf.cell(yw + 2, 36, yr, align="R")
     pdf.set_text_color(*theme.rgb("text"))
 
 
@@ -928,13 +1013,15 @@ def _editorial_swiss(pdf: FPDF, ctx: PageContext, title: str,
     pdf.set_fill_color(*acc)
     pdf.rect(0, 0, plate, plate, style="F")
     pdf.set_text_color(*WHITE)
-    pdf.set_font(theme.body, "B", 21)
+    yr = _year_display(ctx)
+    plate_size = fit_text(pdf, yr, theme.body, "B", 21, plate - 10, min_size=9)
+    pdf.set_font(theme.body, "B", plate_size)
     try:
-        pdf.set_char_spacing(searchable_tracking(21, 1.5))
+        pdf.set_char_spacing(searchable_tracking(plate_size, 1.0))
     except Exception:
         pass
     pdf.set_xy(0, plate / 2 - 5)
-    pdf.cell(plate, 10, str(ctx.year), align="C")
+    pdf.cell(plate, 10, yr, align="C")
     try:
         pdf.set_char_spacing(0)
     except Exception:
@@ -985,7 +1072,7 @@ def _editorial_swiss(pdf: FPDF, ctx: PageContext, title: str,
         pass
     pdf.set_text_color(*blend(theme.rgb("text"), pr, 0.35))
     pdf.set_xy(x1 - 120, row_y)
-    pdf.cell(120, 8, str(ctx.year), align="R")
+    pdf.cell(120, 8, _year_display(ctx), align="R")
     try:
         pdf.set_char_spacing(0)
     except Exception:
@@ -1054,7 +1141,7 @@ def _editorial_centered(pdf: FPDF, ctx: PageContext, title: str,
         pass
     pdf.set_text_color(*blend(theme.rgb("text"), pr, 0.42))
     pdf.set_xy(0, 78)
-    pdf.cell(PAGE_WIDTH, 6, str(ctx.year), align="C")
+    pdf.cell(PAGE_WIDTH, 6, _year_display(ctx), align="C")
     try:
         pdf.set_char_spacing(0)
     except Exception:
@@ -1089,7 +1176,7 @@ def _editorial_centered(pdf: FPDF, ctx: PageContext, title: str,
     # year set in the serif display face -- a considered detail, not a void.
     col_y = 252.0
     pdf.set_font(theme.display, "", 16)
-    yr = str(ctx.year)
+    yr = _year_display(ctx)
     yw = pdf.get_string_width(yr)
     gap = yw / 2 + 9
     pdf.set_draw_color(*frame_c)
@@ -1147,7 +1234,7 @@ def _pattern_band(pdf: FPDF, ctx: PageContext, title: str,
     pdf.set_text_color(*blend(pr, theme.rgb("text"), 0.1))
     theme.set_type(pdf, "cover_year")
     pdf.set_xy(0, 156)
-    pdf.cell(PAGE_WIDTH, 12, _cover_year_text(theme, ctx.year), align="C")
+    pdf.cell(PAGE_WIDTH, 12, _cover_year_text(theme, ctx), align="C")
 
     shown = _shown_title(ctx, title, display_title)
     lines, size = _fit_title_lines(pdf, theme, shown, 360.0, max_lines=2,
@@ -1221,7 +1308,7 @@ def _pattern_card(pdf: FPDF, ctx: PageContext, title: str,
     pdf.set_text_color(*blend(pr, theme.rgb("text"), 0.1))
     theme.set_type(pdf, "cover_year")
     pdf.set_xy(card.x, card.y + 12)
-    pdf.cell(card.w, 12, _cover_year_text(theme, ctx.year), align="C")
+    pdf.cell(card.w, 12, _cover_year_text(theme, ctx), align="C")
 
     shown = _shown_title(ctx, title, display_title)
     lines, size = _fit_title_lines(pdf, theme, shown, max_w, max_lines=2,
@@ -1339,9 +1426,9 @@ class IndexPage:
         sub_labels = [("Cal", NavigationManager.month_key),
                       ("Plan", NavigationManager.monthly_plan_key),
                       ("Review", NavigationManager.monthly_review_key)]
-        for m in range(1, 13):
-            col = (m - 1) % cols
-            row = (m - 1) // cols
+        for idx, m in enumerate(_slot_order(ctx)):
+            col = idx % cols
+            row = idx // cols
             bx = lb.x + col * (cell_w + 6)
             by = y + row * cell_h
             box = Panel(bx, by + 1, cell_w, cell_h - 2.5)
@@ -1450,14 +1537,15 @@ class YearGlancePage:
             bookmark="Year at a Glance",
             active_tab="CALENDAR",
         )
-        page_header(pdf, ctx, str(ctx.year), "YEAR AT A GLANCE")
+        page_header(pdf, ctx, _year_display(ctx), "YEAR AT A GLANCE")
         render_back_link(pdf, ctx, NavigationManager.index_key(),
                          "Back to Index")
 
         panels = [ctx.geo.left_body(), ctx.geo.right_body()]
+        slot_months = _slot_order(ctx)
         for half, panel in enumerate(panels):
             for i in range(6):
-                m = half * 6 + i + 1
+                m = slot_months[half * 6 + i]
                 mm = ctx.geo.mini_month_metrics(panel.inset(0, 2), i % 2, i // 2)
                 YearGlancePage._mini_month(pdf, ctx, m, mm)
 
@@ -1504,7 +1592,7 @@ class YearGlancePage:
         # Day numbers
         theme.set_type(pdf, "mini_digit")
         pdf.set_text_color(*theme.rgb("text"))
-        weeks = _cal.monthcalendar(ctx.year, month)
+        weeks = _grid_weeks(ctx, month)
         for r, week in enumerate(weeks):
             for c, day in enumerate(week):
                 if day == 0:
@@ -1555,7 +1643,7 @@ def _monthly_boxed(pdf: FPDF, ctx: PageContext, month: int,
     pdf.set_line_width(0.35)
     pdf.rect(grid.x, grid.y, grid.width, grid.height, style="D")
 
-    month_cal = _cal.monthcalendar(ctx.year, month)
+    month_cal = _grid_weeks(ctx, month)
     theme.set_type(pdf, "calendar_digit")
     pdf.set_text_color(*theme.rgb("text"))
     for row_idx, week in enumerate(month_cal):
@@ -1600,7 +1688,7 @@ def _monthly_columns(pdf: FPDF, ctx: PageContext, month: int,
     lb = ctx.geo.left_body()
     rb = ctx.geo.right_body()
 
-    weeks = _cal.monthcalendar(ctx.year, month)
+    weeks = _grid_weeks(ctx, month)
     n_rows = len(weeks)
     header_h = 9.0
     row_h = (lb.h - header_h) / n_rows
@@ -1731,7 +1819,7 @@ def _monthly_airy(pdf: FPDF, ctx: PageContext, month: int,
     pdf.line(hx, hy + row_h - 1, hx + cell_w * 7, hy + row_h - 1)
 
     grid = ctx.geo.calendar_grid()
-    month_cal = _cal.monthcalendar(ctx.year, month)
+    month_cal = _grid_weeks(ctx, month)
     # Hairlines between week rows only
     pdf.set_draw_color(*theme.rule_c())
     pdf.set_line_width(0.2)
@@ -1837,7 +1925,7 @@ class MonthlyPlanPage:
         pdf.set_draw_color(*border)
         pdf.set_line_width(0.3)
         pdf.rect(glance.x, glance.y, glance.w, glance.h, style="D")
-        n_days = _cal.monthrange(ctx.year, month)[1]
+        n_days = _cal.monthrange(_month_year(ctx, month), month)[1]
         rows = 16
         row_h = glance.h / rows
         col_w = glance.w / 2
@@ -2011,7 +2099,8 @@ def _weekly_boxed(pdf: FPDF, ctx: PageContext, week_index: int,
     rb = ctx.geo.right_body()
 
     def day_box(panel: Panel, d: date) -> None:
-        label = f"{d.strftime('%A').upper()}  ·  {d.day}"
+        label = (d.strftime('%A').upper() if ctx.undated
+                 else f"{d.strftime('%A').upper()}  ·  {d.day}")
         labelled_box(pdf, theme, panel, label, lines_spacing=8.2)
 
     # Day boxes read chronologically across the whole spread:
@@ -2060,7 +2149,8 @@ def _weekly_columns(pdf: FPDF, ctx: PageContext, week_index: int,
     band_h = 9.0
 
     def day_column(panel: Panel, d: date) -> None:
-        label = f"{d.strftime('%a').upper()} · {d.day}"
+        label = (d.strftime('%a').upper() if ctx.undated
+                 else f"{d.strftime('%a').upper()} · {d.day}")
         if theme.container == "open_air":
             pdf.set_text_color(*theme.label_c())
             theme.set_type(pdf, "band_label", size=7.5)
@@ -2132,7 +2222,7 @@ def _weekly_hourly(pdf: FPDF, ctx: PageContext, week_index: int,
         pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.2))
         pdf.set_font(theme.display, "B", 16)
         pdf.set_xy(panel.x + 2, panel.y + 2)
-        pdf.cell(20, 8, str(d.day), align="L")
+        pdf.cell(20, 8, "" if ctx.undated else str(d.day), align="L")
         pdf.set_font(theme.body, "B", 6.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         name = d.strftime("%a").upper()
@@ -2215,7 +2305,7 @@ def _weekly_airy(pdf: FPDF, ctx: PageContext, week_index: int,
         pdf.set_font(theme.display, "", 13)
         pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.15))
         pdf.set_xy(panel.x2 - 20, rule_y - 7.5)
-        pdf.cell(20, 7, str(d.day), align="R")
+        pdf.cell(20, 7, "" if ctx.undated else str(d.day), align="R")
         pdf.set_draw_color(*theme.structural())
         pdf.set_line_width(0.4)
         pdf.line(panel.x, rule_y, panel.x2, rule_y)
@@ -2258,10 +2348,15 @@ class WeeklyPage:
         ctx: PageContext,
         week_index: int,
         start_date: date,
+        month: int | None = None,
     ) -> None:
         end_date = start_date + timedelta(days=6)
-        month = start_date.month if start_date.year == ctx.year else 1
-        header = f"{start_date.strftime('%b %d')} - {end_date.strftime('%b %d')}"
+        if month is None:
+            month = start_date.month if start_date.year == ctx.year else 1
+        if ctx.undated:
+            header = f"Week {week_index + 1}"
+        else:
+            header = f"{start_date.strftime('%b %d')} - {end_date.strftime('%b %d')}"
 
         begin_content_page(
             pdf, ctx,
@@ -2295,8 +2390,10 @@ class DailyPage:
             active_tab="WEEKLY",
             current_month=month,
         )
-        page_header(pdf, ctx, str(day_date.day),
-                    day_date.strftime("%A").upper(), month=month)
+        # Undated: the day slot number is generic, but the weekday name is a
+        # specific-year artefact -> blank it (matches the weekly/monthly paths).
+        weekday = "" if ctx.undated else day_date.strftime("%A").upper()
+        page_header(pdf, ctx, str(day_date.day), weekday, month=month)
         render_back_link(pdf, ctx, NavigationManager.month_key(month),
                          "Back to Month")
 

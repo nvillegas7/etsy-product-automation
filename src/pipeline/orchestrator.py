@@ -6,7 +6,7 @@ import json
 import os
 import random
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -468,6 +468,7 @@ class PipelineOrchestrator:
                 year=year,
                 features=niche_cfg.get("features", []),
                 niche_slug=niche_slug,
+                start_month=niche_cfg.get("start_month", 1),
             )
 
             PlannerGeneratorCls = _import_planner_generator()
@@ -580,6 +581,38 @@ class PipelineOrchestrator:
                 )
                 logger.info("niche_seeded", niche=slug)
 
+    def _select_priority_niche(
+        self, niches_config: dict, session: "Session"
+    ) -> str | None:
+        """Return a configured priority niche that is 'due', else None.
+
+        A priority niche (``planner.priority_niches``) wins over the scorer and
+        rotation when it is a current candidate and has not been generated
+        within ``planner.priority_fresh_days`` (default 14) -- never-generated
+        first, then least-recent.  Empty config -> no-op (returns None), so the
+        default rotation is unchanged.
+        """
+        planner_cfg = self.config.get("planner", {})
+        priority = planner_cfg.get("priority_niches", []) or []
+        candidates = [s for s in priority if s in niches_config]
+        if not candidates:
+            return None
+
+        fresh_days = planner_cfg.get("priority_fresh_days", 14)
+        last_generated = self._last_generated_by_slug(session)
+        cutoff = datetime.now() - timedelta(days=fresh_days)
+        due = [
+            s for s in candidates
+            if last_generated.get(s) is None or last_generated[s] < cutoff
+        ]
+        if not due:
+            return None
+        return min(
+            due,
+            key=lambda s: (last_generated.get(s) is not None,
+                           last_generated.get(s) or datetime.min),
+        )
+
     @staticmethod
     def _last_generated_by_slug(session: "Session") -> dict[str, datetime | None]:
         """Map niche slug -> most recent products.created_at (None = never).
@@ -622,6 +655,14 @@ class PipelineOrchestrator:
         the least-recently-generated candidate (never-generated first).
         Ultimate fallback: random selection.
         """
+        # Seasonal priority: force configured niches (e.g. academic teacher /
+        # student for the back-to-school window) ahead of the scorer/rotation
+        # until each has been generated within the freshness window.
+        priority = self._select_priority_niche(niches_config, session)
+        if priority is not None:
+            logger.info("niche_selected_by_priority", niche=priority)
+            return priority
+
         use_live_trends = self.config.get("research", {}).get("use_live_trends", True)
         NicheScorerCls = _import_niche_scorer()
         TrendsClientCls = _import_trends_client()
@@ -658,11 +699,15 @@ class PipelineOrchestrator:
         return slug
 
     def _price_for(self, product_type: str) -> float:
-        """Resolve the default price for a product type."""
+        """Resolve the default LIST price for a product type (USD).
+
+        Planners default to the $19.99 bundle list price; books to $6.99.
+        The standing 30% sale is applied manually in Etsy Shop Manager.
+        """
         pricing = self.config.get("pricing", {})
         if product_type == "picture_book":
-            return pricing.get("book_price_usd", pricing.get("default_price_usd", 4.99))
-        return pricing.get("default_price_usd", 5.99)
+            return pricing.get("book_price_usd", pricing.get("default_price_usd", 6.99))
+        return pricing.get("default_price_usd", 19.99)
 
     def _pick_book_params(self, niche_cfg: dict, session: "Session") -> dict:
         """Pick a fresh picture-book parameter combination.
@@ -926,11 +971,13 @@ class PipelineOrchestrator:
                     or "Planner"
                 )
                 keywords = [kw for kw, _ in scored_keywords[:10]]
+                date_label = self._seo_date_label(product, niche_cfg)
                 title = seo.generate_title(
                     niche_name=niche_name,
                     year=product.year,
                     palette_name=product.palette_name,
                     keywords=keywords,
+                    date_label=date_label,
                 )
                 features = list(niche_cfg.get("features", []))
                 design_line = self._design_feature_line(product)
@@ -940,11 +987,13 @@ class PipelineOrchestrator:
                     niche_config=niche_cfg,
                     year=product.year,
                     features=features,
+                    date_label=date_label,
                 )
                 tags = seo.generate_tags(
                     keywords=keywords,
                     niche_name=niche_name,
                     year=product.year,
+                    date_label=date_label,
                 )
             except Exception as exc:
                 logger.warning("seo_generation_failed_using_defaults", error=str(exc))
@@ -1107,27 +1156,61 @@ class PipelineOrchestrator:
             file_size_bytes=file_size,
         )
 
+    @staticmethod
+    def _trio_modes(is_hero: bool) -> list[str]:
+        """Date modes generated for one colorway of a date-trio bundle.
+
+        The hero palette carries all three (dated / dated_next / undated); every
+        other colorway carries dated_next + undated -- the verified
+        "2026 2027 & Undated" bestseller layout (hero x3 + others x2).
+        """
+        return (["dated", "dated_next", "undated"] if is_hero
+                else ["dated_next", "undated"])
+
+    def _planner_builds(
+        self, niche_cfg: dict, palettes: list[str]
+    ) -> list[tuple[str, str]]:
+        """The ``(palette, date_mode)`` PDFs to generate for this product.
+
+        Non-trio niches keep today's behavior: one ``dated`` PDF per palette.
+        ``date_trio`` niches (academic teacher/student) expand into the trio
+        matrix.  The first entry is always ``(hero, "dated")`` -- the preview
+        and mockup source.
+        """
+        if not niche_cfg.get("date_trio"):
+            return [(palette, "dated") for palette in palettes]
+        builds: list[tuple[str, str]] = []
+        for i, palette in enumerate(palettes):
+            for mode in self._trio_modes(is_hero=(i == 0)):
+                builds.append((palette, mode))
+        return builds
+
     def _generate_planner_bundle(
         self, product: Product, niche_cfg: dict, session: "Session"
     ) -> None:
-        """Generate one PDF per bundled palette and zip them for delivery."""
+        """Generate the product's PDFs (palette x date_mode) and zip them."""
         palettes = self._product_palettes(product)
-        # Hero always first; generate it plus one PDF per remaining palette.
+        builds = self._planner_builds(niche_cfg, palettes)
+        # First build is (hero palette, dated): the preview + mockup source.
         pdf_paths = [
-            self._generate_planner_pdf(product, niche_cfg, palette_name=palette)
-            for palette in palettes
+            self._generate_planner_pdf(
+                product, niche_cfg, palette_name=palette, date_mode=mode
+            )
+            for palette, mode in builds
         ]
         hero_pdf = pdf_paths[0]
         self._persist_hero_pdf(product, hero_pdf, session)
 
-        bundle_enabled = self.config.get("planner", {}).get("palette_bundle", True)
-        if not (bundle_enabled and len(pdf_paths) > 1):
-            # Single-palette planner: no zip, but record the (single) palette.
+        # Zip whenever more than one PDF was produced -- whether from multiple
+        # palettes (palette_bundle) OR multiple date modes (date_trio). Only a
+        # truly single PDF skips the zip. (palette_bundle governs how many
+        # PALETTES run_once selects, not whether a trio gets delivered.)
+        if len(pdf_paths) <= 1:
             ProductRepository(session).set_bundle(product.id, palettes)
             return
 
         bundle_path = self._bundle_planner_pdfs(
-            product, niche_cfg, palettes, pdf_paths
+            product, niche_cfg, builds, pdf_paths
         )
         ProductRepository(session).set_bundle(
             product.id, palettes, bundle_path=bundle_path
@@ -1136,17 +1219,23 @@ class PipelineOrchestrator:
             "palette_bundle_zipped",
             product_id=product.id,
             bundle_path=str(bundle_path),
-            palette_count=len(pdf_paths),
+            pdf_count=len(pdf_paths),
         )
 
     def _bundle_planner_pdfs(
         self,
         product: Product,
         niche_cfg: dict,
-        palettes: list[str],
+        builds: list[tuple[str, str]],
         pdf_paths: list[Path],
     ) -> Path:
-        """Zip per-palette PDFs into ``paths.bundle_dir`` with clean arcnames."""
+        """Zip the built PDFs into ``paths.bundle_dir`` with clean arcnames.
+
+        Arcnames lead with the date-span token (``2026-2027`` / ``2027-2028`` /
+        ``undated`` / ``2026``) so a buyer can tell the versions apart.  For a
+        plain calendar planner (start_month 1, dated) the token is the year and
+        the name is byte-identical to the pre-trio ``{year}_{Name}_{palette}``.
+        """
         bundle_files = _import_bundler()
         if bundle_files is None:
             raise RuntimeError(
@@ -1161,16 +1250,61 @@ class PipelineOrchestrator:
             or humanize(niche_cfg.get("slug", ""))
             or "Planner"
         )
-        base = re.sub(r"[^A-Za-z0-9]+", "_", f"{product.year}_{name}").strip("_")
-        arcnames = [f"{base}_{palette}.pdf" for palette in palettes]
+        name_slug = re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_")
+        arcnames = [
+            f"{self._date_token(product, niche_cfg, mode)}_{name_slug}_{palette}.pdf"
+            for palette, mode in builds
+        ]
         out_zip = bundle_dir / f"product_{product.id}_bundle.zip"
-        return bundle_files(pdf_paths, out_zip, arcnames=arcnames)
+        zip_path = bundle_files(pdf_paths, out_zip, arcnames=arcnames)
+        self._warn_if_zip_oversize(zip_path)
+        return zip_path
+
+    @staticmethod
+    def _date_token(product: Product, niche_cfg: dict, date_mode: str) -> str:
+        """Filename-safe date-span token for a build (reuses the generator)."""
+        from src.planner.generator import PlannerSpec, _year_part
+        return _year_part(PlannerSpec(
+            year=product.year,
+            start_month=niche_cfg.get("start_month", 1),
+            date_mode=date_mode,
+        ))
+
+    def _seo_date_label(self, product: Product, niche_cfg: dict) -> str | None:
+        """Human date-span label for SEO title/description/tags.
+
+        ``None`` for a plain single calendar-year planner (keeps the "{year}"
+        default and today's SEO output).  Academic single builds get the span
+        ("2026-2027"); trio builds get the full list
+        ("2026-2027 2027-2028 & Undated", or "2026 2027 & Undated" calendar).
+        """
+        if niche_cfg.get("date_trio"):
+            dated = self._date_token(product, niche_cfg, "dated")
+            dnext = self._date_token(product, niche_cfg, "dated_next")
+            return f"{dated} {dnext} & Undated"
+        if niche_cfg.get("start_month", 1) != 1:
+            return self._date_token(product, niche_cfg, "dated")
+        return None
+
+    def _warn_if_zip_oversize(self, zip_path: Path) -> None:
+        """Etsy caps a single digital file at 20 MB; a trio x palettes bundle
+        can approach that.  Log a warning so the reviewer can trim colorways."""
+        cap_mb = self.config.get("planner", {}).get("max_file_size_mb", 20)
+        size_mb = zip_path.stat().st_size / (1024 * 1024)
+        if size_mb > cap_mb:
+            logger.warning(
+                "bundle_zip_exceeds_etsy_cap",
+                bundle_path=str(zip_path),
+                size_mb=round(size_mb, 2),
+                cap_mb=cap_mb,
+            )
 
     def _generate_planner_pdf(
         self,
         product: Product,
         niche_cfg: dict,
         palette_name: str | None = None,
+        date_mode: str = "dated",
     ) -> Path:
         PlannerGeneratorCls = _import_planner_generator()
         if PlannerGeneratorCls is None:
@@ -1188,6 +1322,8 @@ class PipelineOrchestrator:
             features=niche_cfg.get("features", []),
             niche_slug=niche_cfg.get("slug", re.sub(r'[^a-z0-9]+', '_', niche_cfg.get("name", "planner").lower()).strip('_')),
             design=self._product_design_params(product).get("design", "classic"),
+            start_month=niche_cfg.get("start_month", 1),
+            date_mode=date_mode,
         )
 
         generator = PlannerGeneratorCls()
@@ -1443,6 +1579,8 @@ class PipelineOrchestrator:
         display_title: str | None = None,
         design: str = "classic",
         design_overrides: dict[str, str] | None = None,
+        start_month: int = 1,
+        date_mode: str = "dated",
     ):
         """Build a PlannerSpec consumed by PlannerGenerator.generate()."""
         planner_cfg = self.config.get("planner", {})
@@ -1472,6 +1610,8 @@ class PipelineOrchestrator:
                 include_goals=True,
                 design=design,
                 design_overrides=design_overrides,
+                start_month=start_month,
+                date_mode=date_mode,
             )
         except ImportError:
             # Fallback to dict if PlannerSpec not available
@@ -1484,6 +1624,8 @@ class PipelineOrchestrator:
                 "niche_slug": niche_slug,
                 "design": design,
                 "design_overrides": design_overrides,
+                "start_month": start_month,
+                "date_mode": date_mode,
             }
 
     @staticmethod

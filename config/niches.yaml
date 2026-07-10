@@ -97,11 +97,17 @@ niches:
   student_planner:
     name: "Student Planner"
     theme_motif: "academic"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    start_month: 8           # academic year: Aug -> Jul (back-to-school builds)
+    date_trio: true          # one zip: 2026-2027 + 2027-2028 + undated per colorway
     seed_keywords:
       - "student planner"
       - "college planner"
       - "academic planner"
       - "study planner"
+      - "2026-2027 student planner"
+      - "2026-2027 academic planner"
+      - "back to school"
+      - "college planner 2026 2027"
     modifiers:
       - "digital"
       - "printable"
@@ -189,11 +195,17 @@ niches:
   teacher_planner:
     name: "Teacher Planner"
     theme_motif: "teaching"  # see src/planner/niche_themes.py NICHE_MOTIFS
+    start_month: 8           # academic year: Aug -> Jul (back-to-school builds)
+    date_trio: true          # one zip: 2026-2027 + 2027-2028 + undated per colorway
     seed_keywords:
       - "teacher planner"
       - "lesson planner"
       - "classroom planner"
       - "educator planner"
+      - "teacher planner 2026-2027"
+      - "2026-2027 academic planner"
+      - "back to school"
+      - "lesson planner 2026 2027"
     modifiers:
       - "digital"
       - "printable"

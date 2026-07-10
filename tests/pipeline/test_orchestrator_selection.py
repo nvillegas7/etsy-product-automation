@@ -204,3 +204,117 @@ class TestRotation:
             )
         finally:
             session.close()
+
+
+# ---------------------------------------------------------------------------
+# P1: seasonal priority niches
+# ---------------------------------------------------------------------------
+
+
+class TestPriorityNiche:
+    PRIORITY = {"priority_niches": ["teacher_planner", "student_planner"],
+                "priority_fresh_days": 14}
+
+    def _enable_priority(self, orchestrator):
+        orchestrator.config = {
+            **CONFIG, "planner": {**CONFIG["planner"], **self.PRIORITY}
+        }
+
+    def _seed(self, orchestrator, session_factory, fresh=()):
+        niches_config = _load_niches_config()
+        session = session_factory()
+        try:
+            orchestrator._seed_niches(niches_config, session)
+            repo = NicheRepository(session)
+            for slug in fresh:
+                niche = repo.get_by_slug(slug)
+                session.add(Product(
+                    niche_id=niche.id, title="t", palette_name="soft_sage",
+                    year=2026, state=ProductState.REVIEW_PENDING,
+                    created_at=datetime.now(),
+                ))
+            session.commit()
+        finally:
+            session.close()
+        return niches_config
+
+    def test_priority_niche_wins_when_never_generated(
+        self, orchestrator, session_factory
+    ):
+        self._enable_priority(orchestrator)
+        niches_config = self._seed(orchestrator, session_factory)
+        session = session_factory()
+        try:
+            assert orchestrator._select_niche(niches_config, session) == "teacher_planner"
+        finally:
+            session.close()
+
+    def test_priority_yields_to_next_when_first_is_fresh(
+        self, orchestrator, session_factory
+    ):
+        self._enable_priority(orchestrator)
+        niches_config = self._seed(orchestrator, session_factory, fresh=["teacher_planner"])
+        session = session_factory()
+        try:
+            assert orchestrator._select_niche(niches_config, session) == "student_planner"
+        finally:
+            session.close()
+
+    def test_priority_is_noop_when_all_fresh(self, orchestrator, session_factory):
+        self._enable_priority(orchestrator)
+        niches_config = self._seed(
+            orchestrator, session_factory, fresh=["teacher_planner", "student_planner"]
+        )
+        session = session_factory()
+        try:
+            assert orchestrator._select_priority_niche(niches_config, session) is None
+        finally:
+            session.close()
+
+    def test_empty_priority_list_is_noop(self, orchestrator, session_factory):
+        # Default CONFIG has no priority_niches -> normal rotation.
+        niches_config = self._seed(orchestrator, session_factory)
+        session = session_factory()
+        try:
+            assert orchestrator._select_priority_niche(niches_config, session) is None
+        finally:
+            session.close()
+
+
+# ---------------------------------------------------------------------------
+# P1: academic spec propagation
+# ---------------------------------------------------------------------------
+
+
+class TestAcademicSpec:
+    def test_start_month_and_date_mode_thread_into_spec(self, orchestrator):
+        spec = orchestrator._build_planner_spec(
+            title="2026 Teacher Planner",
+            subtitle="",
+            palette_name="soft_sage",
+            year=2026,
+            features=[],
+            niche_slug="teacher_planner",
+            start_month=8,
+            date_mode="dated",
+        )
+        assert spec.start_month == 8
+        assert spec.date_mode == "dated"
+
+    def test_defaults_keep_calendar_year(self, orchestrator):
+        spec = orchestrator._build_planner_spec(
+            title="2026 Budget Planner", subtitle="", palette_name="soft_sage",
+            year=2026, features=[], niche_slug="budget_planner",
+        )
+        assert spec.start_month == 1
+        assert spec.date_mode == "dated"
+
+    def test_seo_date_label_variants(self, orchestrator):
+        from src.storage.models import Product
+
+        p = Product(year=2026)
+        assert orchestrator._seo_date_label(
+            p, {"date_trio": True, "start_month": 8}
+        ) == "2026-2027 2027-2028 & Undated"
+        assert orchestrator._seo_date_label(p, {"start_month": 8}) == "2026-2027"
+        assert orchestrator._seo_date_label(p, {}) is None
