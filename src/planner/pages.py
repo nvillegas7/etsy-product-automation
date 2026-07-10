@@ -1437,9 +1437,10 @@ class IndexPage:
             pdf.set_line_width(0.3)
             pdf.rect(box.x, box.y, box.w, box.h, style="FD",
                      round_corners=True, corner_radius=1.6)
-            # Month name (accent face) + linked sub-labels
+            # Month name (accent face) + linked sub-labels -- enlarged for
+            # index legibility (reviewer: index fonts were too small).
             pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.3))
-            _accent_note_font(pdf, theme, 13)
+            _accent_note_font(pdf, theme, 15)
             pdf.set_xy(box.x + 4, box.y)
             pdf.cell(38, box.h, _cal.month_name[m], align="L",
                      link=nav.get_link(NavigationManager.month_key(m)))
@@ -1535,7 +1536,7 @@ class YearGlancePage:
             pdf, ctx,
             bind_key=NavigationManager.year_glance_key(),
             bookmark="Year at a Glance",
-            active_tab="CALENDAR",
+            active_tab="MONTHLY",
         )
         page_header(pdf, ctx, _year_display(ctx), "YEAR AT A GLANCE")
         render_back_link(pdf, ctx, NavigationManager.index_key(),
@@ -1569,7 +1570,7 @@ class YearGlancePage:
             pdf.rect(mm.x, mm.y, mm.w, mm.title_h, style="F",
                      round_corners=("TOP_LEFT", "TOP_RIGHT"), corner_radius=1.8)
         pdf.set_text_color(*theme.band_text_c())
-        pdf.set_font(theme.body, "B", 8)
+        pdf.set_font(theme.body, "B", 9)
         try:
             pdf.set_char_spacing(0.6)
         except Exception:
@@ -1581,16 +1582,16 @@ class YearGlancePage:
         except Exception:
             pass
 
-        # Weekday letters
-        pdf.set_font(theme.body, "B", 5.6)
+        # Weekday letters (enlarged for at-a-glance legibility)
+        pdf.set_font(theme.body, "B", 6.8)
         pdf.set_text_color(*theme.rgb("text_light"))
         gy = mm.y + mm.title_h + 2.5
         for i, wd in enumerate(WEEKDAY_LABELS):
             pdf.set_xy(mm.x + i * mm.cell_w, gy)
             pdf.cell(mm.cell_w, mm.cell_h, wd, align="C")
 
-        # Day numbers
-        theme.set_type(pdf, "mini_digit")
+        # Day numbers (enlarged: the reviewers found the old ~5.8pt too small)
+        theme.set_type(pdf, "mini_digit", size=7.5)
         pdf.set_text_color(*theme.rgb("text"))
         weeks = _grid_weeks(ctx, month)
         for r, week in enumerate(weeks):
@@ -1772,7 +1773,7 @@ def _monthly_columns(pdf: FPDF, ctx: PageContext, month: int,
     sy = lb.y
     buttons: list[tuple[str, str]] = []
     if nav.has_link(NavigationManager.monthly_plan_key(month)):
-        buttons.append(("Monthly Plan",
+        buttons.append(("At a Glance",
                         NavigationManager.monthly_plan_key(month)))
     if nav.has_link(NavigationManager.monthly_review_key(month)):
         buttons.append(("Monthly Review",
@@ -1885,12 +1886,12 @@ class MonthlyPage:
             pdf, ctx,
             bind_key=NavigationManager.month_key(month),
             bookmark=_cal.month_name[month],
-            active_tab="CALENDAR",
+            active_tab="MONTHLY",
             current_month=month,
         )
         page_header(pdf, ctx, "MONTHLY", "CALENDAR", month=month)
         render_back_link(pdf, ctx, NavigationManager.monthly_plan_key(month),
-                         "Monthly Plan")
+                         "At a Glance")
         MONTHLY_VARIANTS[ctx.design.interior](pdf, ctx, month, week_link_map)
 
 
@@ -1907,12 +1908,14 @@ class MonthlyPlanPage:
         begin_content_page(
             pdf, ctx,
             bind_key=NavigationManager.monthly_plan_key(month),
-            bookmark=f"{_cal.month_name[month]} Plan",
+            bookmark=f"{_cal.month_name[month]} at a Glance",
             bookmark_level=1,
-            active_tab="CALENDAR",
+            active_tab="MONTHLY",
             current_month=month,
         )
-        page_header(pdf, ctx, "MONTHLY", "PLAN", month=month)
+        # "MONTH AT A GLANCE" -- parallels YEAR AT A GLANCE and reads clearly
+        # distinct from the MONTHLY CALENDAR grid (reviewer feedback).
+        page_header(pdf, ctx, "MONTH AT", "A GLANCE", month=month)
         render_back_link(pdf, ctx, NavigationManager.month_key(month),
                          "Back to Month")
 
@@ -2023,7 +2026,7 @@ class MonthlyReviewPage:
             bind_key=NavigationManager.monthly_review_key(month),
             bookmark=f"{_cal.month_name[month]} Review",
             bookmark_level=1,
-            active_tab="CALENDAR",
+            active_tab="MONTHLY",
             current_month=month,
         )
         page_header(pdf, ctx, "MONTHLY", "REVIEW", month=month)

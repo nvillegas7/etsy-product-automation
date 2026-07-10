@@ -132,9 +132,9 @@ niches:
         tab: "CLASSES"
       - id: assignment_tracker
         label: "Assignments"
-        tab: "ASSIGN"
+        tab: "ASSIGNMENT"
       - id: exam_tracker
-        label: "Exam Tracker"
+        label: "Exam Schedule"
         tab: "EXAMS"
       - id: grade_log
         label: "Grade Log"
@@ -145,6 +145,9 @@ niches:
       - id: reading_list
         label: "Reading List"
         tab: "READING"
+      - id: school_fees
+        label: "School Fees"
+        tab: "FEES"
 
   fitness_planner:
     name: "Fitness Planner"

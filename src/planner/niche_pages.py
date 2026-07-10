@@ -345,13 +345,13 @@ def _class_schedule(pdf: FPDF, ctx: PageContext) -> None:
         if band is not None:
             pdf.set_fill_color(*band)
             pdf.rect(panel.x, panel.y, panel.w, header_h, style="F")
-        theme.set_type(pdf, "inline_label", size=6.5)
+        theme.set_type(pdf, "inline_label", size=7.5)
         pdf.set_text_color(*theme.band_text_c())
         for i, d in enumerate(days):
             pdf.set_xy(panel.x + time_w + i * day_w, panel.y)
             pdf.cell(day_w, header_h, d.upper(), align="C")
         gr = theme.rule_c()
-        theme.set_type(pdf, "mini_digit", size=5.6)
+        theme.set_type(pdf, "mini_digit", size=6.8)
         pdf.set_text_color(*theme.rgb("text_light"))
         for i, hour in enumerate(hours):
             hy = panel.y + header_h + i * row_h
@@ -370,7 +370,8 @@ def _class_schedule(pdf: FPDF, ctx: PageContext) -> None:
 
     timetable(lb, ["Mon", "Tue", "Wed"])
     rsecs = rb.split_v([0.72, 0.28], gap=7)
-    timetable(rsecs[0], ["Thu", "Fri"])
+    # Saturday included -- college students commonly have weekend classes.
+    timetable(rsecs[0], ["Thu", "Fri", "Sat"])
     y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y, "Class List",
                       underline_w=rsecs[1].w)
     table(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
@@ -386,37 +387,20 @@ def _assignment_tracker(pdf: FPDF, ctx: PageContext) -> None:
 
 
 def _exam_tracker(pdf: FPDF, ctx: PageContext) -> None:
+    """Exam SCHEDULE tracker: a date/time/subject/location grid with a done
+    column, beside a study-priorities checklist."""
     theme = ctx.theme
-    gr = theme.rule_c()
-    for panel in (ctx.geo.left_body(), ctx.geo.right_body()):
-        for card in panel.rows(3, gap=7):
-            border = theme.border_c()
-            pdf.set_fill_color(*WHITE)
-            pdf.set_draw_color(*border)
-            pdf.set_line_width(0.35)
-            pdf.rect(card.x, card.y, card.w, card.h, style="FD",
-                     round_corners=True, corner_radius=2.2)
-            inner = card.inset(6, 5)
-            theme.set_type(pdf, "inline_label", size=7)
-            pdf.set_text_color(*theme.rgb("text_light"))
-            row1 = [("COURSE", 0.42), ("DATE", 0.30), ("TIME", 0.28)]
-            x = inner.x
-            for lbl, frac in row1:
-                w = inner.w * frac
-                pdf.set_xy(x, inner.y)
-                pdf.cell(pdf.get_string_width(lbl) + 1, 5, lbl, align="L")
-                pdf.set_draw_color(*gr)
-                pdf.line(x + pdf.get_string_width(lbl) + 2, inner.y + 4.4,
-                         x + w - 4, inner.y + 4.4)
-                x += w
-            y = section_label(pdf, theme, inner.x, inner.y + 9,
-                              "Topics to Study", size=7)
-            checkbox_lines(pdf, theme, Panel(inner.x, y, inner.w * 0.62,
-                                             inner.y2 - y), spacing=7.6)
-            score = Panel(inner.x + inner.w * 0.68, y + 2, inner.w * 0.3,
-                          inner.y2 - y - 4)
-            labelled_box(pdf, theme, score, "Score", label_h=6,
-                         lines_spacing=None)
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+
+    y = section_label(pdf, theme, lb.x, lb.y, "Exam Schedule", underline_w=lb.w)
+    table(pdf, theme, Panel(lb.x, y, lb.w, lb.y2 - y),
+          [("Date", 0.15), ("Time", 0.14), ("Subject", 0.35),
+           ("Location", 0.20), ("Done", 0.16)],
+          n_rows=16, zebra=True)
+
+    y = section_label(pdf, theme, rb.x, rb.y, "Study Priorities",
+                      underline_w=rb.w)
+    checkbox_lines(pdf, theme, Panel(rb.x, y, rb.w, rb.y2 - y), spacing=8.4)
 
 
 def _grade_log(pdf: FPDF, ctx: PageContext) -> None:
@@ -490,6 +474,34 @@ def _reading_list(pdf: FPDF, ctx: PageContext) -> None:
     table(pdf, theme, Panel(rsecs[0].x, y, rsecs[0].w, rsecs[0].y2 - y),
           [("Title", 0.45), ("Author", 0.3), ("Rating", 0.25)], n_rows=9)
     labelled_box(pdf, theme, rsecs[1], "Favorite Quotes", lines_spacing=8.5)
+
+
+def _school_fees(pdf: FPDF, ctx: PageContext) -> None:
+    """School fees & expenses tracker: what needs settling, by when, and how
+    much (books, academic trips, uniforms, lab fees...), with a paid checkbox
+    and a totals summary."""
+    theme = ctx.theme
+    lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
+
+    y = section_label(pdf, theme, lb.x, lb.y, "School Fees & Expenses",
+                      underline_w=lb.w)
+    table(pdf, theme, Panel(lb.x, y, lb.w, lb.y2 - y),
+          [("Item / Expense", 0.38), ("Amount", 0.18), ("Due Date", 0.18),
+           ("Paid", 0.12), ("Notes", 0.14)],
+          n_rows=17, zebra=True)
+
+    rsecs = rb.split_v([0.58, 0.42], gap=8)
+    y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Priority to Settle",
+                      underline_w=rsecs[0].w)
+    checkbox_lines(pdf, theme, Panel(rsecs[0].x, y, rsecs[0].w, rsecs[0].y2 - y),
+                   spacing=8.6)
+    y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y, "Totals",
+                      underline_w=rsecs[1].w)
+    boxes = Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y).rows(2, gap=6)
+    labelled_box(pdf, theme, boxes[0], "Total Due", label_h=6.5,
+                 lines_spacing=None)
+    labelled_box(pdf, theme, boxes[1], "Total Paid", label_h=6.5,
+                 lines_spacing=None)
 
 
 # ===================================================================
@@ -1949,6 +1961,7 @@ RENDERERS: dict[str, Callable[[FPDF, PageContext], None]] = {
     "grade_log": _grade_log,
     "semester_goals": _semester_goals,
     "reading_list": _reading_list,
+    "school_fees": _school_fees,
     # fitness
     "workout_log": _workout_log,
     "measurements": _measurements,

@@ -5,6 +5,12 @@ outline entries, and page count for two palettes.
 The fixture ``golden_classic.json`` was generated from the code as it stood
 before the design-parameter refactor.  If this test fails, the classic
 rendering changed -- which violates backward compatibility.
+
+Deliberately re-baselined 2026-07-10 to bless owner-directed reviewer-feedback
+improvements to shared chrome: the top tab "CALENDAR" -> "MONTHLY", the
+monthly-plan page -> "MONTH AT A GLANCE", and enlarged Year-at-a-Glance / index
+fonts.  Re-baseline only on such deliberate, reviewed changes -- never to make
+an unexplained failure pass.
 """
 
 from __future__ import annotations

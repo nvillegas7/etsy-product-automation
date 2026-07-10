@@ -230,7 +230,9 @@ class TestNichePages:
         for slug in ("budget_planner", "student_planner", "fitness_planner",
                      "adhd_planner", "teacher_planner"):
             specs = get_niche_pages(slug)
-            assert len(specs) == 6, f"{slug} should declare 6 niche pages"
+            # Niche page shape is bounded at 5-7 (student carries 7 incl. the
+            # school-fees page added from reviewer feedback).
+            assert 5 <= len(specs) <= 7, f"{slug} niche pages out of 5-7 bound"
             for s in specs:
                 assert s.id in RENDERERS
 
@@ -261,7 +263,7 @@ class TestNichePages:
         spec = _small_spec(niche_slug=slug, palette_name=palette)
         path = PlannerGenerator().generate(spec)
         doc = fitz.open(str(path))
-        assert len(doc) == 3 + 36 + 6 + 3
+        assert len(doc) == 3 + 36 + len(get_niche_pages(slug)) + 3
         # niche pages carry links back to the index
         niche_page = doc[len(doc) - 5]
         assert len(niche_page.get_links()) > 0

@@ -259,7 +259,9 @@ VOICES: dict[str, dict[str, RoleSpec]] = {
         "cover_subtitle": _v("body", "", 10, "upper", 2.5),
     },
     "script": {
-        "page_title":     _v("script", "", 26, "title"),
+        # Page headers use the readable display serif -- the cursive script
+        # face stays on the cover/display_title only (functional legibility).
+        "page_title":     _v("display", "", 23, "title"),
         "page_subtitle":  _v("body", "I", 9),
         "section_label":  _v("body", "I", 9, "lower", 0.8),
         "band_label":     _v("body", "", 8, "title", 0.6),

@@ -240,7 +240,7 @@ def _build_top_tabs(
     """Niche-aware top category tabs: (label, link_key) pairs."""
     tabs: list[tuple[str, str]] = [
         ("INDEX", NavigationManager.index_key()),
-        ("CALENDAR", NavigationManager.month_key(1)),
+        ("MONTHLY", NavigationManager.month_key(1)),
     ]
     if spec.include_weekly:
         tabs.append(("WEEKLY", NavigationManager.week_key(0)))
