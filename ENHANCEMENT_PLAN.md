@@ -172,3 +172,46 @@ seasonal deadline. Waves 4–5 can follow at normal cadence.
 294 tool calls). Full per-agent findings, fact-check verdicts and the
 capability audit are in the session transcript; the 25-claim verdict map is
 reproduced in section 1 and inline in each enhancement's rationale.*
+
+---
+
+## Addendum 2026-07-24 — sticker / movable-book deep-research (verified)
+
+104-agent run (`wf_b73e4014-fb4`): 65 claims → 25 adversarially verified
+(3-vote), 19 confirmed / 6 refuted / 0 unverified. Owner-prompted by reports
+of digital-sticker and velcro movable-character-book trends.
+
+**P13 (sticker packs) — pull the IN-ZIP half forward to NOW; keep standalone
+packs at Sep–Oct.** Verified: every top 2026 planner listing bundles
+2,500–3,500+ pre-cropped PNG stickers (often + a .goodnotes sticker book)
+*inside* the planner purchase and titles it "With Digital Stickers"
+(listings 1833235300, 1847039141, 1639453781 et al.) — table stakes at the
+top of the niche. Our academic trio listings should NOT launch without
+stickers in the zip. Nuances: (i) "mega-library-size is the only winning
+format" was REFUTED 0-3 — curated packs stay viable; (ii) top sticker themes
+are ADULT planner aesthetics (Navy & Blush, Inspirational Quotes, Clean All
+The Things…), NOT kids/kawaii → our packs should lead with palette-matched
+functional elements (chips/checkboxes/habit grids per the P13 spec); kawaii
+character stickers are a differentiated bet, not proven demand; (iii)
+competitor counts are combinatorial (elements × colors) — we can honestly
+advertise "150+ stickers" by counting per-palette variants; (iv) name more
+apps explicitly (GoodNotes, Notability, Xodo, Noteshelf…) — category-standard
+compatibility copy.
+
+**Busy-book line — KEEP Q4 timing.** The movable-character TikTok wave is
+Feb-2023 vintage (video Snowflake-ID decode) and was already in TikTok-Shop
+commodity-affiliate phase by Oct 2025 — no current-virality basis to pull
+forward. But the category is confirmed digital-addressable at premium price:
+a pure-PDF busy book lists at **$55 for 129 activities / 250+ pages**
+(listing 770011334, Star Seller ~39.7k sales) with print-laminate-velcro
+assembly delegated to the buyer. Spec updates for the Q4 build: target
+100+ pages (40-page starters exist but under-differentiate), and ship BOTH
+variants from the same art — velcro-assembly AND "no-prep print-and-go"
+(verified counter-position, listing 4319559470).
+
+**No new Q4 trend surfaced.** Etsy's own S/S-2026 trend report contains zero
+digital-download/kids content (weak negative — it structurally skews
+physical). Refuted as folklore: "174k monthly views / $2–6k/mo sticker
+sellers" and "100–500-sticker $5–12 sweet spot" (both from a PLR blog).
+Open: realized prices behind Etsy's bot-wall; whether kids-themed digital
+stickers are a gap or a no-demand zone; Q4 seasonal sticker/busy-book angles.
