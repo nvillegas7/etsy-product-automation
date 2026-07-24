@@ -144,6 +144,15 @@ def _import_bundler():
         return None
 
 
+def _import_stickers():
+    """Lazily import the sticker-asset generator; None if unavailable."""
+    try:
+        from src.marketing.stickers import generate_sticker_assets
+        return generate_sticker_assets
+    except ImportError:
+        return None
+
+
 def _import_design_system():
     """Lazily import the planner design registry; returns None if unavailable."""
     try:
@@ -972,12 +981,14 @@ class PipelineOrchestrator:
                 )
                 keywords = [kw for kw, _ in scored_keywords[:10]]
                 date_label = self._seo_date_label(product, niche_cfg)
+                sticker_count = self._seo_sticker_count(product)
                 title = seo.generate_title(
                     niche_name=niche_name,
                     year=product.year,
                     palette_name=product.palette_name,
                     keywords=keywords,
                     date_label=date_label,
+                    with_stickers=bool(sticker_count),
                 )
                 features = list(niche_cfg.get("features", []))
                 design_line = self._design_feature_line(product)
@@ -988,12 +999,14 @@ class PipelineOrchestrator:
                     year=product.year,
                     features=features,
                     date_label=date_label,
+                    sticker_count=sticker_count,
                 )
                 tags = seo.generate_tags(
                     keywords=keywords,
                     niche_name=niche_name,
                     year=product.year,
                     date_label=date_label,
+                    with_stickers=bool(sticker_count),
                 )
             except Exception as exc:
                 logger.warning("seo_generation_failed_using_defaults", error=str(exc))
@@ -1201,16 +1214,23 @@ class PipelineOrchestrator:
         hero_pdf = pdf_paths[0]
         self._persist_hero_pdf(product, hero_pdf, session)
 
-        # Zip whenever more than one PDF was produced -- whether from multiple
-        # palettes (palette_bundle) OR multiple date modes (date_trio). Only a
-        # truly single PDF skips the zip. (palette_bundle governs how many
+        # Digital stickers ride in every planner zip (verified table stakes on
+        # top listings); per-palette sheet PDF + pre-cropped PNGs.
+        sticker_paths, sticker_arcs = self._generate_sticker_files(
+            product, palettes
+        )
+
+        # Zip whenever more than one file was produced -- multiple palettes
+        # (palette_bundle), multiple date modes (date_trio), or stickers. Only
+        # a truly single PDF skips the zip. (palette_bundle governs how many
         # PALETTES run_once selects, not whether a trio gets delivered.)
-        if len(pdf_paths) <= 1:
+        if len(pdf_paths) + len(sticker_paths) <= 1:
             ProductRepository(session).set_bundle(product.id, palettes)
             return
 
         bundle_path = self._bundle_planner_pdfs(
-            product, niche_cfg, builds, pdf_paths
+            product, niche_cfg, builds, pdf_paths,
+            extra_paths=sticker_paths, extra_arcs=sticker_arcs,
         )
         ProductRepository(session).set_bundle(
             product.id, palettes, bundle_path=bundle_path
@@ -1222,12 +1242,53 @@ class PipelineOrchestrator:
             pdf_count=len(pdf_paths),
         )
 
+    def _generate_sticker_files(
+        self, product: Product, palettes: list[str]
+    ) -> tuple[list[Path], list[str]]:
+        """Per-palette digital-sticker assets for the delivery zip.
+
+        Returns parallel (paths, arcnames) lists: one printable sheet PDF plus
+        the pre-cropped transparent PNGs per colorway, PNGs foldered as
+        ``Stickers_{palette}/NN_name.png``.  Gated on
+        ``planner.digital_stickers`` (default off so existing pipelines and
+        tests are untouched; production config enables it) and degrades to
+        no stickers if generation is unavailable or fails.
+        """
+        if not self.config.get("planner", {}).get("digital_stickers", False):
+            return [], []
+        generate_sticker_assets = _import_stickers()
+        if generate_sticker_assets is None:
+            logger.warning("sticker_generator_not_available")
+            return [], []
+
+        sticker_dir = _PROJECT_ROOT / self.config.get("paths", {}).get(
+            "sticker_dir", "output/stickers"
+        )
+        paths: list[Path] = []
+        arcs: list[str] = []
+        for palette in palettes:
+            try:
+                assets = generate_sticker_assets(
+                    palette, sticker_dir / f"product_{product.id}"
+                )
+            except Exception:
+                logger.exception("sticker_generation_failed", palette=palette)
+                continue
+            paths.append(assets.sheet_pdf)
+            arcs.append(assets.sheet_pdf.name)
+            for png in assets.png_paths:
+                paths.append(png)
+                arcs.append(f"Stickers_{palette}/{png.name}")
+        return paths, arcs
+
     def _bundle_planner_pdfs(
         self,
         product: Product,
         niche_cfg: dict,
         builds: list[tuple[str, str]],
         pdf_paths: list[Path],
+        extra_paths: list[Path] | None = None,
+        extra_arcs: list[str] | None = None,
     ) -> Path:
         """Zip the built PDFs into ``paths.bundle_dir`` with clean arcnames.
 
@@ -1255,8 +1316,10 @@ class PipelineOrchestrator:
             f"{self._date_token(product, niche_cfg, mode)}_{name_slug}_{palette}.pdf"
             for palette, mode in builds
         ]
+        all_paths = [*pdf_paths, *(extra_paths or [])]
+        all_arcs = [*arcnames, *(extra_arcs or [])]
         out_zip = bundle_dir / f"product_{product.id}_bundle.zip"
-        zip_path = bundle_files(pdf_paths, out_zip, arcnames=arcnames)
+        zip_path = bundle_files(all_paths, out_zip, arcnames=all_arcs)
         self._warn_if_zip_oversize(zip_path)
         return zip_path
 
@@ -1269,6 +1332,24 @@ class PipelineOrchestrator:
             start_month=niche_cfg.get("start_month", 1),
             date_mode=date_mode,
         ))
+
+    def _seo_sticker_count(self, product: Product) -> int:
+        """Deterministic sticker count for SEO copy (0 = no stickers).
+
+        SEO runs before PDF/sticker generation, so the count is computed from
+        the palette list x the fixed per-palette element count rather than
+        from files on disk.  Returns 0 unless ``planner.digital_stickers`` is
+        enabled and the product is a planner.
+        """
+        if product.product_type != "planner":
+            return 0
+        if not self.config.get("planner", {}).get("digital_stickers", False):
+            return 0
+        try:
+            from src.marketing.stickers import sticker_count_for
+        except ImportError:
+            return 0
+        return sticker_count_for(len(self._product_palettes(product)) or 1)
 
     def _seo_date_label(self, product: Product, niche_cfg: dict) -> str | None:
         """Human date-span label for SEO title/description/tags.

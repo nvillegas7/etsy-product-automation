@@ -50,6 +50,7 @@ class ListingSEO:
         palette_name: str | None = None,
         keywords: list[str] | None = None,
         date_label: str | None = None,
+        with_stickers: bool = False,
     ) -> str:
         """Generate an SEO-optimized listing title (max 140 chars).
 
@@ -82,16 +83,22 @@ class ListingSEO:
                     extra = kw.strip().title()
                     break
 
+        # "With Digital Stickers" is the verified table-stakes title element
+        # on top planner listings; it outranks the extra keyword when the
+        # 140-char cap forces a choice.
+        stickers = "With Digital Stickers" if with_stickers else ""
+
         # Try longest form first, then progressively shorten
-        if extra:
-            candidate = f"{core} | {extra} | {suffix}"
+        segment_sets = [
+            [core, extra, stickers, suffix],
+            [core, stickers, suffix],
+            [core, extra, suffix],
+            [core, suffix],
+        ]
+        for segments in segment_sets:
+            candidate = " | ".join(s for s in segments if s)
             if len(candidate) <= MAX_TITLE_LENGTH:
                 return candidate
-
-        # Without extra keyword
-        candidate = f"{core} | {suffix}"
-        if len(candidate) <= MAX_TITLE_LENGTH:
-            return candidate
 
         # Just core — truncate if somehow still too long
         if len(core) > MAX_TITLE_LENGTH:
@@ -109,6 +116,7 @@ class ListingSEO:
         features: list[str] | None = None,
         palettes: list[str] | None = None,
         date_label: str | None = None,
+        sticker_count: int | None = None,
     ) -> str:
         """Generate a rich, SEO-friendly listing description.
 
@@ -147,6 +155,17 @@ class ListingSEO:
                 "dated year you need now and the undated version any year."
             )
 
+        # --- Digital stickers (planner bundles with sticker assets) ---
+        if sticker_count:
+            sections.append(
+                "DIGITAL STICKERS:\n"
+                f"  {sticker_count}+ digital stickers included — pre-cropped "
+                "transparent PNGs matched to every colorway (weekday labels, "
+                "to-do chips, habit trackers, icons) plus printable sticker "
+                "sheets. Drag them straight into GoodNotes, Notability, or "
+                "any annotation app."
+            )
+
         # --- Colour options (multi-palette bundle only) ---
         distinct = _distinct_palettes(palettes)
         if len(distinct) >= 2:
@@ -174,6 +193,11 @@ class ListingSEO:
             "Notes & brain-dump pages",
             "Goal-setting worksheets",
         ]
+        if sticker_count:
+            included.append(
+                f"{sticker_count}+ digital stickers (pre-cropped PNGs "
+                "+ printable sticker sheets)"
+            )
         sections.append(
             "WHAT'S INCLUDED:\n" + "\n".join(f"  - {item}" for item in included)
         )
@@ -240,6 +264,7 @@ class ListingSEO:
         niche_name: str,
         year: int | None = None,
         date_label: str | None = None,
+        with_stickers: bool = False,
     ) -> list[str]:
         """Generate exactly 13 unique, lowercase tags (each <= 20 chars).
 
@@ -265,6 +290,10 @@ class ListingSEO:
         # Keyword tags
         for kw in keywords:
             raw_tags.append(kw.lower().strip())
+
+        # Sticker tag: buyers search it directly; verified title element.
+        if with_stickers:
+            raw_tags.append("digital stickers")
 
         # Date-mode tags: a clean year span ("2026 2027") + the strong "undated"
         # term the single-year keyword set does not otherwise cover.

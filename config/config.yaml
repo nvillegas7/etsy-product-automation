@@ -23,6 +23,10 @@ planner:
     - "teacher_planner"
     - "student_planner"
   priority_fresh_days: 14
+  # Bundle per-palette digital stickers (pre-cropped PNGs + printable sheet)
+  # into every planner zip and merchandise "With Digital Stickers" in the
+  # title. Verified 2026-07-24: table stakes on top planner listings.
+  digital_stickers: true
 
 pricing:
   # Realized Etsy prices sit in the $7-16 band after discount culture, so
@@ -64,6 +68,7 @@ paths:
   book_output_dir: "output/books"
   mockup_dir: "output/mockups"
   bundle_dir: "output/bundles"
+  sticker_dir: "output/stickers"
   preview_dir: "output/previews"
   database: "data/planner.db"
   fonts_dir: "src/planner/fonts"

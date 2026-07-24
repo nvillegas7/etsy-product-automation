@@ -40,6 +40,12 @@ class TestTags:
         tags = seo.generate_tags(["budget planner"], "Budget Planner", 2026)
         assert "undated planner" not in tags
 
+    def test_sticker_tag_added(self):
+        seo = ListingSEO()
+        tags = seo.generate_tags(["teacher planner"], "Teacher Planner", 2026,
+                                 with_stickers=True)
+        assert "digital stickers" in tags
+
     def test_year_span_keyword_stays_searchable(self):
         # Hyphenated span keywords must degrade to "2026 2027", never "20262027".
         seo = ListingSEO()
@@ -49,6 +55,50 @@ class TestTags:
         )
         assert not any("20262027" in t for t in tags)
         assert "2026 2027" in tags
+
+
+class TestStickers:
+    def test_title_gains_sticker_segment_within_cap(self):
+        seo = ListingSEO()
+        title = seo.generate_title(
+            "Teacher Planner", 2026,
+            keywords=["lesson planner"],
+            date_label="2026-2027 2027-2028 & Undated",
+            with_stickers=True,
+        )
+        assert "With Digital Stickers" in title
+        assert len(title) <= 140
+
+    def test_stickers_outrank_extra_keyword_when_tight(self):
+        # A long extra keyword must be dropped before the sticker segment.
+        seo = ListingSEO()
+        title = seo.generate_title(
+            "Teacher Planner", 2026,
+            keywords=["a very long tail keyword phrase for lesson planning teachers"],
+            date_label="2026-2027 2027-2028 & Undated",
+            with_stickers=True,
+        )
+        assert "With Digital Stickers" in title
+        assert len(title) <= 140
+
+    def test_title_unchanged_without_stickers(self):
+        seo = ListingSEO()
+        assert "Stickers" not in seo.generate_title("Budget Planner", 2026)
+
+    def test_description_sticker_section(self):
+        seo = ListingSEO()
+        desc = seo.generate_description(
+            {"name": "Teacher Planner", "features": []}, 2026,
+            sticker_count=244,
+        )
+        assert "DIGITAL STICKERS" in desc
+        assert "244+" in desc
+
+    def test_description_without_stickers_unchanged(self):
+        seo = ListingSEO()
+        desc = seo.generate_description(
+            {"name": "Budget Planner", "features": []}, 2026)
+        assert "DIGITAL STICKERS" not in desc
 
 
 class TestDescription:

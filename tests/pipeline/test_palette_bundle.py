@@ -250,3 +250,69 @@ class TestDateTrio:
         assert len(names) == 3
         assert any("2026-2027" in n for n in names)
         assert any("undated" in n for n in names)
+
+
+# ---------------------------------------------------------------------------
+# P13 (in-zip half): digital stickers ride in the planner zip
+# ---------------------------------------------------------------------------
+
+
+class TestDigitalStickers:
+    def _stub_sticker_generator(self, monkeypatch, tmp_path):
+        """Fake generate_sticker_assets: tiny files, real return shape."""
+        from src.marketing.stickers import StickerAssets
+
+        def fake_assets(palette, out_dir, **kwargs):
+            from pathlib import Path
+
+            out = Path(out_dir)
+            out.mkdir(parents=True, exist_ok=True)
+            sheet = out / f"Digital_Stickers_{palette}.pdf"
+            sheet.write_bytes(b"sheet")
+            pngs = []
+            for i in range(2):
+                p = out / palette
+                p.mkdir(exist_ok=True)
+                png = p / f"{i:02d}_icon.png"
+                png.write_bytes(b"png")
+                pngs.append(png)
+            return StickerAssets(palette=palette, sheet_pdf=sheet,
+                                 png_paths=pngs)
+
+        import src.pipeline.orchestrator as orch_mod
+        monkeypatch.setattr(orch_mod, "_import_stickers", lambda: fake_assets)
+
+    def test_stickers_added_to_bundle_zip_when_enabled(
+        self, session_factory, tmp_path, monkeypatch
+    ):
+        from pathlib import Path
+
+        _stub_heavy_steps(monkeypatch, tmp_path)
+        self._stub_sticker_generator(monkeypatch, tmp_path)
+        config = _make_config(tmp_path)
+        config["planner"]["digital_stickers"] = True
+        config["paths"]["sticker_dir"] = str(tmp_path / "stickers")
+        orch = PipelineOrchestrator(config, session_factory)
+        product = orch.run_once(product_type="planner")
+
+        p = _reload(session_factory, product.id)
+        palettes = json.loads(p.palettes)
+        with zipfile.ZipFile(Path(p.bundle_path)) as zf:
+            names = zf.namelist()
+
+        # One sheet PDF + 2 stubbed PNGs per palette, PNGs foldered.
+        sheets = [n for n in names if n.startswith("Digital_Stickers_")]
+        pngs = [n for n in names if n.startswith("Stickers_")]
+        assert len(sheets) == len(palettes)
+        assert len(pngs) == 2 * len(palettes)
+        assert all("/" in n for n in pngs)  # foldered per colorway
+
+    def test_stickers_off_by_default(self, session_factory, tmp_path, monkeypatch):
+        from pathlib import Path
+
+        _stub_heavy_steps(monkeypatch, tmp_path)
+        orch = PipelineOrchestrator(_make_config(tmp_path), session_factory)
+        product = orch.run_once(product_type="planner")
+        p = _reload(session_factory, product.id)
+        with zipfile.ZipFile(Path(p.bundle_path)) as zf:
+            assert not any("Sticker" in n for n in zf.namelist())
