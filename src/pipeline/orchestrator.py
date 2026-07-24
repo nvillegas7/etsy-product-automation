@@ -708,15 +708,15 @@ class PipelineOrchestrator:
         return slug
 
     def _price_for(self, product_type: str) -> float:
-        """Resolve the default LIST price for a product type (USD).
+        """Resolve the default price for a product type (USD).
 
-        Planners default to the $19.99 bundle list price; books to $6.99.
-        The standing 30% sale is applied manually in Etsy Shop Manager.
+        Volume strategy (owner decision 2026-07-24): planners $5.99, books
+        $4.99 — priced to sell many, not high.
         """
         pricing = self.config.get("pricing", {})
         if product_type == "picture_book":
-            return pricing.get("book_price_usd", pricing.get("default_price_usd", 6.99))
-        return pricing.get("default_price_usd", 19.99)
+            return pricing.get("book_price_usd", pricing.get("default_price_usd", 4.99))
+        return pricing.get("default_price_usd", 5.99)
 
     def _pick_book_params(self, niche_cfg: dict, session: "Session") -> dict:
         """Pick a fresh picture-book parameter combination.

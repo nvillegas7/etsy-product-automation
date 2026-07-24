@@ -209,6 +209,12 @@ assembly delegated to the buyer. Spec updates for the Q4 build: target
 variants from the same art — velcro-assembly AND "no-prep print-and-go"
 (verified counter-position, listing 4319559470).
 
+**OWNER PRICING DECISION 2026-07-24 (overrides P3's pricing half):** volume
+strategy — planners **$5.99** flat, books **$4.99**; deliberately NOT the
+research-recommended $19.99-list + standing-30%-sale anchor. Priced to sell
+many, not high. P3's merchandising half (hyperlink mockups, "Hyperlinked"
+titles) stays live. Do not re-raise prices without the owner's say-so.
+
 **No new Q4 trend surfaced.** Etsy's own S/S-2026 trend report contains zero
 digital-download/kids content (weak negative — it structurally skews
 physical). Refuted as folklore: "174k monthly views / $2–6k/mo sticker
