@@ -171,29 +171,34 @@ niches:
       - "patina_blue"
     subtitle: "Crush your fitness goals with structured planning"
     features:
-      - "Workout log"
-      - "Meal planner"
-      - "Progress tracker"
-      - "Body measurements"
+      - "SMART goal page with start-vs-target stats"
+      - "Workout log: sets x reps, RPE, cardio & how-I-felt"
+      - "Weekly split + 12-week overview grid"
+      - "Body measurements, weight trend & progress photos"
+      - "Meals & macros log with water tracker"
+      - "Personal records seeded with the big lifts"
     niche_pages:
+      - id: fitness_goals
+        label: "Fitness Goals"
+        tab: "GOALS"
       - id: workout_log
         label: "Workout Log"
         tab: "WORKOUT"
+      - id: weekly_split
+        label: "Weekly Split"
+        tab: "SPLIT"
       - id: measurements
         label: "Measurements"
         tab: "MEASURE"
       - id: meal_planner
-        label: "Meal Planner"
+        label: "Meals & Macros"
         tab: "MEALS"
-      - id: hydration_steps
-        label: "Water & Steps"
-        tab: "HYDRATE"
-      - id: progress_photos
-        label: "Progress Photos"
-        tab: "PHOTOS"
       - id: personal_records
         label: "Personal Records"
         tab: "RECORDS"
+      - id: progress_photos
+        label: "Progress Photos"
+        tab: "PHOTOS"
 
   teacher_planner:
     name: "Teacher Planner"
@@ -270,10 +275,13 @@ niches:
       - "classic_boho"
     subtitle: "Stress-free trip organizer from packing to bucket list"
     features:
-      - "Day-by-day itinerary"
-      - "Packing checklists"
-      - "Travel budget tracker"
-      - "Trip journal"
+      - "Trip overview with documents, insurance & embassy info"
+      - "Day-by-day itinerary with booking refs & costs"
+      - "Flights & stays tracker (confirmations, check-in/out)"
+      - "Pre-printed packing list by category"
+      - "Travel budget by category + expense log"
+      - "Pre-trip countdown checklist (passport, visa, insurance)"
+      - "Places to visit with hours & fees, restaurants & journal"
     niche_pages:
       - id: trip_overview
         label: "Trip Overview"
@@ -281,18 +289,21 @@ niches:
       - id: itinerary
         label: "Daily Itinerary"
         tab: "DAYS"
+      - id: accommodation
+        label: "Flights & Stays"
+        tab: "FLIGHTS"
       - id: packing_list
         label: "Packing List"
         tab: "PACKING"
       - id: travel_budget
         label: "Travel Budget"
         tab: "BUDGET"
-      - id: accommodation
-        label: "Stays & Transport"
-        tab: "STAYS"
+      - id: pre_trip_checklist
+        label: "Pre-Trip Checklist"
+        tab: "CHECKLIST"
       - id: travel_journal
-        label: "Travel Journal"
-        tab: "JOURNAL"
+        label: "Places & Journal"
+        tab: "PLACES"
 
   wedding:
     name: "Wedding Planner"
@@ -317,26 +328,30 @@ niches:
       - "dusty_rose"
     subtitle: "Engagement-to-honeymoon organizer for the big day"
     features:
-      - "Countdown timeline"
-      - "Budget breakdown"
-      - "Vendor & guest tracker"
-      - "Seating chart"
+      - "Vendor directory + prospect & quote comparison"
+      - "Budget by category with typical % guide + payment schedule"
+      - "12-month countdown checklist & important dates"
+      - "Guest list, RSVP & seating chart"
+      - "Day-of run of show, contacts & emergency kit"
     niche_pages:
       - id: wedding_overview
-        label: "Wedding Overview"
+        label: "Our Wedding"
         tab: "OVERVIEW"
       - id: wedding_timeline
-        label: "Countdown Timeline"
-        tab: "TIMELINE"
+        label: "Countdown Checklist"
+        tab: "COUNTDOWN"
       - id: wedding_budget
-        label: "Budget Breakdown"
+        label: "Wedding Budget"
         tab: "BUDGET"
       - id: vendor_tracker
-        label: "Vendor Tracker"
+        label: "Vendor Directory"
         tab: "VENDORS"
       - id: guest_list
         label: "Guest List"
         tab: "GUESTS"
+      - id: day_of_timeline
+        label: "Day-Of Timeline"
+        tab: "DAY-OF"
       - id: seating_chart
         label: "Seating Chart"
         tab: "SEATING"

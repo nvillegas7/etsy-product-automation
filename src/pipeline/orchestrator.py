@@ -185,7 +185,29 @@ def _load_niches_config() -> dict:
         for slug, cfg in (books_data.get("niches") or {}).items():
             cfg.setdefault("product_type", "picture_book")
             niches[slug] = cfg
+    # Every config carries its registry key as ``slug``.  Downstream steps
+    # (PDF generation, SEO, bundling) receive the bare config dict, and the
+    # generator looks niche pages / motif policy up BY SLUG -- deriving the
+    # slug from the display name ("Wedding Planner" -> "wedding_planner")
+    # silently missed every niche whose key is not name-shaped (travel,
+    # wedding, meal_recipe, ...), shipping them with zero niche pages.
+    for slug, cfg in niches.items():
+        cfg.setdefault("slug", slug)
     return niches
+
+
+def _niche_slug(niche_cfg: dict) -> str:
+    """The niches.yaml registry key for *niche_cfg*.
+
+    Prefers the ``slug`` injected by :func:`_load_niches_config`; falls back
+    to a name-derived slug only for ad-hoc dicts that never went through the
+    loader.
+    """
+    slug = niche_cfg.get("slug")
+    if slug:
+        return slug
+    name = niche_cfg.get("name", "planner")
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "planner"
 
 
 def _etsy_upload_enabled(config: dict) -> bool:
@@ -1401,7 +1423,7 @@ class PipelineOrchestrator:
             palette_name=palette_name or product.palette_name,
             year=product.year,
             features=niche_cfg.get("features", []),
-            niche_slug=niche_cfg.get("slug", re.sub(r'[^a-z0-9]+', '_', niche_cfg.get("name", "planner").lower()).strip('_')),
+            niche_slug=_niche_slug(niche_cfg),
             design=self._product_design_params(product).get("design", "classic"),
             start_month=niche_cfg.get("start_month", 1),
             date_mode=date_mode,

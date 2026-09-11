@@ -351,13 +351,23 @@ def select_preview_pages(page_count: int) -> list[int]:
 def ensure_previews(product_id: int, pdf_path: Path, preview_root: Path) -> list[int]:
     """Render cached PNG previews for a product's PDF.
 
-    Pages already rendered are skipped. Returns the sorted list of 1-based
-    page numbers that have preview images on disk.
+    Pages already rendered from the CURRENT PDF are skipped.  When the PDF is
+    newer than the cached previews (the product was regenerated in place) the
+    whole cache for that product is discarded and re-rendered -- otherwise a
+    reviewer keeps seeing the pre-regeneration pages and re-rejects fixes
+    that already shipped.  Returns the sorted list of 1-based page numbers
+    that have preview images on disk.
     """
     import fitz  # PyMuPDF
 
     out_dir = preview_root / f"product_{product_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    pdf_mtime = pdf_path.stat().st_mtime
+    cached = list(out_dir.glob("page_*.png"))
+    if any(png.stat().st_mtime < pdf_mtime for png in cached):
+        for png in cached:
+            png.unlink(missing_ok=True)
 
     doc = fitz.open(str(pdf_path))
     try:
