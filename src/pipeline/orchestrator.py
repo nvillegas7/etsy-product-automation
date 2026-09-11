@@ -1016,6 +1016,9 @@ class PipelineOrchestrator:
                 design_line = self._design_feature_line(product)
                 if design_line:
                     features.append(design_line)
+                dark_line = self._dark_mode_feature_line(product)
+                if dark_line:
+                    features.append(dark_line)
                 description = seo.generate_description(
                     niche_config=niche_cfg,
                     year=product.year,
@@ -1116,6 +1119,22 @@ class PipelineOrchestrator:
                 f"{str(voice).replace('-', ' ')} typography"
             )
         return f"{label} design theme"
+
+    @classmethod
+    def _dark_mode_feature_line(cls, product: Product) -> str | None:
+        """Merchandise the dark-mode lane when the bundle carries an
+        ``is_dark`` palette (P4): buyers search "dark mode planner"."""
+        palettes = cls._product_design_params(product).get("palettes") or []
+        get_palettes = _import_get_palettes()
+        if not palettes or get_palettes is None:
+            return None
+        registry = get_palettes()
+        dark = [p for p in palettes if p in registry and registry[p].is_dark]
+        if not dark:
+            return None
+        names = ", ".join(registry[p].name for p in dark)
+        return (f"Dark Mode colorway included ({names}) -- dark ground, "
+                "light ink, easy on the eyes at night")
 
     @staticmethod
     def _fallback_seo(

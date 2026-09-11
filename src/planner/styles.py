@@ -469,8 +469,27 @@ class Theme:
     def band_text_c(self) -> tuple[int, int, int]:
         """Label color when the text sits ON a band fill."""
         if self.ink.band == "solid":
-            return WHITE
+            return self.reverse_text_c()
         return blend(self.rgb("text"), self.rgb("primary"), self._label_ink_t())
+
+    def surface_c(self) -> tuple[int, int, int]:
+        """Card / button surface.
+
+        White on every light palette (classic-exact).  On a dark ground
+        (``is_dark``) a white card would carry the palette's LIGHT ink and
+        vanish, so the surface is the plate lifted 7% toward the ink instead.
+        """
+        if self.palette.is_dark:
+            return blend(self.paper_c(), self.rgb("text"), 0.07)
+        return WHITE
+
+    def reverse_text_c(self) -> tuple[int, int, int]:
+        """Text sitting on a solid primary/structural plate: white on light
+        palettes; on a dark ground the primary is itself light, so the
+        reversed text is the dark plate color."""
+        if self.palette.is_dark:
+            return self.rgb("background")
+        return WHITE
 
     def label_c(self) -> tuple[int, int, int]:
         """Label color when the text sits directly on the paper."""

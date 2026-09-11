@@ -221,3 +221,21 @@ physical). Refuted as folklore: "174k monthly views / $2–6k/mo sticker
 sellers" and "100–500-sticker $5–12 sweet spot" (both from a PLR blog).
 Open: realized prices behind Etsy's bot-wall; whether kids-themed digital
 stickers are a gap or a no-demand zone; Q4 seasonal sticker/busy-book angles.
+
+## Status 2026-09-12 — niche-depth overhaul + dark lane
+
+- **Shipped:** P4 dark-mode palette lane (`midnight_slate`, `dark_rainbow`,
+  `gothic_plum` — first `is_dark` palettes; `Theme.surface_c()` /
+  `reverse_text_c()` keep cards and reversed text legible on a dark plate)
+  and P8 `nocturne` (Gothmas) preset. Rotation picks nocturne up
+  automatically; the ADHD niche now prefers `dark_rainbow`.
+- **Shipped (owner-directed, outside the plan):** wedding / travel / fitness
+  niche pages rebuilt with pre-printed domain content at the 7-page bound
+  (see commit `5eaa8a2`). Two infrastructure bugs behind the 9/5 rejections
+  fixed: niche-slug derivation (expansion niches shipped with zero niche
+  pages) and the stale preview cache.
+- **Still due Sep–Oct:** P13 second half (standalone $4.99 sticker packs +
+  sticker-showcase mockup). P11 savings_challenge and P12 support pages
+  remain scheduled for Oct–Nov.
+- **Operational:** the dashboard process must be restarted after any code
+  change (a process started 7/7 generated #17–#19 with pre-7/10 code).

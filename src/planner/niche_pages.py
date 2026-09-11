@@ -204,7 +204,7 @@ def _savings_goals(pdf: FPDF, ctx: PageContext) -> None:
     for panel in (ctx.geo.left_body(), ctx.geo.right_body()):
         for card in panel.rows(3, gap=8):
             border = theme.border_c()
-            pdf.set_fill_color(*WHITE)
+            pdf.set_fill_color(*theme.surface_c())
             pdf.set_draw_color(*border)
             pdf.set_line_width(0.35)
             pdf.rect(card.x, card.y, card.w, card.h, style="FD",
@@ -768,7 +768,7 @@ def _progress_photos(pdf: FPDF, ctx: PageContext) -> None:
                        ("Date", "Weight", "Waist"))
         frames = Panel(panel.x, y + 12, panel.w, panel.y2 - y - 36)
         for frame, lbl in zip(frames.cols(3, gap=6), ("FRONT", "SIDE", "BACK")):
-            pdf.set_fill_color(*(theme.box_fill() or WHITE))
+            pdf.set_fill_color(*(theme.box_fill() or theme.surface_c()))
             pdf.set_draw_color(*theme.border_c())
             pdf.set_line_width(0.35)
             pdf.rect(frame.x, frame.y, frame.w, frame.h, style="FD",
@@ -943,7 +943,7 @@ def _routine_builder(pdf: FPDF, ctx: PageContext) -> None:
         gr = theme.rule_c()
         for i in range(n):
             ry = grid.y + i * row_h
-            pdf.set_fill_color(*(theme.box_fill() or WHITE))
+            pdf.set_fill_color(*(theme.box_fill() or theme.surface_c()))
             pdf.set_draw_color(*blend(gr, theme.structural(), 0.25))
             pdf.set_line_width(0.28)
             pdf.rect(grid.x + 1, ry + row_h * 0.2, 3.4, 3.4, style="FD",
@@ -1383,7 +1383,7 @@ def _checklist_items(pdf: FPDF, ctx: PageContext, panel: Panel, items: tuple,
     """Checkbox rows with pre-printed *items*; remaining rows stay blank."""
     theme = ctx.theme
     gr = theme.rule_c()
-    fill = theme.box_fill() or WHITE
+    fill = theme.box_fill() or theme.surface_c()
     n = max(1, int((panel.h - 2) / spacing))
     radius = _container_radius(theme, 0.7)
     box_c = blend(theme.rgb("grid_line"), theme.structural(), 0.25)
@@ -1419,7 +1419,7 @@ def _check_grid(pdf: FPDF, ctx: PageContext, panel: Panel,
     col_w = (panel.w - label_w) / n_cols
     row_h = (panel.h - header_h) / len(row_heads)
     radius = _container_radius(theme, 0.7)
-    pdf.set_fill_color(*(theme.box_fill() or WHITE))
+    pdf.set_fill_color(*(theme.box_fill() or theme.surface_c()))
     pdf.set_draw_color(*blend(theme.rgb("grid_line"), theme.structural(), 0.25))
     pdf.set_line_width(0.28)
     for r in range(len(row_heads)):
@@ -1920,7 +1920,7 @@ def _recipe_card(pdf: FPDF, ctx: PageContext) -> None:
     theme = ctx.theme
     gr = theme.rule_c()
     for panel in (ctx.geo.left_body(), ctx.geo.right_body()):
-        pdf.set_fill_color(*WHITE)
+        pdf.set_fill_color(*theme.surface_c())
         pdf.set_draw_color(*theme.border_c())
         pdf.set_line_width(0.35)
         pdf.rect(panel.x, panel.y, panel.w, panel.h, style="FD",

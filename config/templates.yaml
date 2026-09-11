@@ -191,6 +191,49 @@ palettes:
     tab_active: "#4E807D"
     tab_inactive: "#E4EEEC"
 
+  # --- DARK-MODE lane (P4): is_dark grounds render raw (no 65% lift) --------
+  # Light ink on a dark plate; grid/tab tints stay within the plate so the
+  # page reads as a true dark-mode planner, not a grey one.
+  midnight_slate:
+    name: "Midnight Slate"
+    background: "#1A1D24"
+    primary: "#7FB3AE"
+    secondary: "#3A4652"
+    accent: "#C08A5A"
+    text: "#E8ECEF"
+    text_light: "#9AA7B0"
+    grid_line: "#2C333C"
+    tab_active: "#7FB3AE"
+    tab_inactive: "#262C35"
+    is_dark: true
+
+  dark_rainbow:
+    name: "Dark Rainbow"
+    background: "#16141C"
+    primary: "#FF6B6B"
+    secondary: "#3A3345"
+    accent: "#FFD166"
+    text: "#F2EEF7"
+    text_light: "#A79FB5"
+    grid_line: "#2B2636"
+    tab_active: "#06D6A0"
+    tab_inactive: "#241F2E"
+    is_dark: true
+
+  # Gothmas / romantic goth (P8 nocturne): plum plate, lavender ink, silver.
+  gothic_plum:
+    name: "Gothic Plum"
+    background: "#1D1626"
+    primary: "#B7A1D9"
+    secondary: "#3B2F4C"
+    accent: "#C9CCD6"
+    text: "#EDE7F5"
+    text_light: "#A597B8"
+    grid_line: "#2F2540"
+    tab_active: "#B7A1D9"
+    tab_inactive: "#281F35"
+    is_dark: true
+
 fonts:
   primary:
     family: "Inter"

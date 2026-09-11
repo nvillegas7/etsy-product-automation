@@ -106,6 +106,8 @@ PRESETS: dict[str, DesignTheme] = {
     "lavender":   _p("lavender",   "cards",  "airy",    "botanical", "serif",   "accent-pop",  "pattern", "dot"),
     "confetti":   _p("confetti",   "cards",  "boxed",   "geometric", "grotesk", "soft-wash",   "pattern", "dot"),
     "blush":      _p("blush",      "cards",  "boxed",   "botanical", "serif",   "ink-on-paper","band",    "ruled"),
+    # --- DARK lane (P8 nocturne = Gothmas / romantic goth; listed Aug-Sep) --
+    "nocturne":   _p("nocturne",   "flat",   "boxed",   "celestial", "serif",   "ink-on-paper","pattern", "dot"),
 }
 
 # ---------------------------------------------------------------------------
@@ -165,23 +167,27 @@ PRESET_PALETTES: dict[str, tuple[str, ...]] = {
                 "charcoal_minimal", "boho_pink", "classic_boho",
                 "modern_minimal", "terracotta_clay", "sage_linen"),
     "meadow": ("soft_sage", "classic_boho", "sage_linen", "terracotta_clay"),
-    "midnight": ("ocean_blue", "charcoal_minimal"),
+    "midnight": ("ocean_blue", "charcoal_minimal", "midnight_slate"),
     "almanac": ("neutral_beige", "charcoal_minimal"),
     "atelier": ("dusty_rose", "neutral_beige"),
     "riviera": ("ocean_blue", "boho_pink"),
     "sorbet": ("boho_pink", "dusty_rose"),
-    "studio": ("modern_minimal", "charcoal_minimal"),
+    "studio": ("modern_minimal", "charcoal_minimal", "dark_rainbow"),
     "ledger": ("neutral_beige", "charcoal_minimal"),
     "blueprint": ("ocean_blue", "charcoal_minimal"),
     "gallery": ("modern_minimal", "neutral_beige"),
-    "noir": ("modern_minimal", "charcoal_minimal"),
+    "noir": ("modern_minimal", "charcoal_minimal", "midnight_slate",
+             "dark_rainbow"),
     "terracotta": ("terracotta_clay", "dusty_adobe", "classic_boho",
                    "sage_linen"),
     "wildflower": ("sage_linen", "terracotta_clay", "classic_boho",
                    "soft_sage"),
     "lavender": ("lavender_haze", "mint_cream", "blush_butter", "patina_blue"),
-    "confetti": ("blush_butter", "mint_cream", "lavender_haze", "dusty_rose"),
+    "confetti": ("blush_butter", "mint_cream", "lavender_haze", "dusty_rose",
+                 "dark_rainbow"),
     "blush": ("blush_butter", "dusty_adobe", "dusty_rose", "patina_blue"),
+    "nocturne": ("gothic_plum", "midnight_slate", "charcoal_minimal",
+                 "ocean_blue"),
 }
 
 

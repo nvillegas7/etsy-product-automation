@@ -1432,7 +1432,7 @@ class IndexPage:
             bx = lb.x + col * (cell_w + 6)
             by = y + row * cell_h
             box = Panel(bx, by + 1, cell_w, cell_h - 2.5)
-            pdf.set_fill_color(*WHITE)
+            pdf.set_fill_color(*theme.surface_c())
             pdf.set_draw_color(*border)
             pdf.set_line_width(0.3)
             pdf.rect(box.x, box.y, box.w, box.h, style="FD",
@@ -1495,7 +1495,7 @@ class IndexPage:
             pdf.set_font(theme.body, "", 8)
             pdf.set_text_color(*theme.rgb("text_light")
                                if band != theme.rgb("primary")
-                               else WHITE)
+                               else theme.reverse_text_c())
             pdf.set_xy(box.x + box.w - 16, box.y)
             pdf.cell(10, box.h, ">", align="C", link=nav.get_link(key))
         y += len(niche_pages) * (row_h + 3) + 4
@@ -1558,7 +1558,7 @@ class YearGlancePage:
         border = theme.border_c()
         link = ctx.nav.get_link(NavigationManager.month_key(month))
 
-        pdf.set_fill_color(*WHITE)
+        pdf.set_fill_color(*theme.surface_c())
         pdf.set_draw_color(*border)
         pdf.set_line_width(0.3)
         pdf.rect(mm.x, mm.y, mm.w, mm.h, style="FD",
@@ -2049,7 +2049,7 @@ class MonthlyReviewPage:
         pdf.cell(rate.w * 0.55, rate.h, "HOW WOULD YOU RATE THIS MONTH?",
                  align="L")
         _plain_reset(pdf, theme)
-        soft = theme.box_fill() or WHITE
+        soft = theme.box_fill() or theme.surface_c()
         for i in range(5):
             cx = rate.x + rate.w * 0.60 + i * 15
             cy = rate.y + rate.h / 2
@@ -2486,7 +2486,7 @@ class DailyPage:
             pdf.rect(panel.x + panel.w * 0.12, panel.y + 1,
                      panel.w * 0.76, panel.h - 2, style="F",
                      round_corners=True, corner_radius=1.2)
-            pdf.set_text_color(*WHITE)
+            pdf.set_text_color(*theme.reverse_text_c())
             pdf.set_font(theme.body, "B", 7)
             try:
                 pdf.set_char_spacing(0.5)
@@ -2686,7 +2686,7 @@ class GoalSettingPage:
         gr = theme.rule_c()
         border = theme.border_c()
 
-        pdf.set_fill_color(*WHITE)
+        pdf.set_fill_color(*theme.surface_c())
         pdf.set_draw_color(*border)
         pdf.set_line_width(0.35)
         pdf.rect(card.x, card.y, card.w, card.h, style="FD",

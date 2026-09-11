@@ -304,7 +304,7 @@ def checkbox_lines(pdf: FPDF, theme: Theme, panel: Panel,
                    inset: float = 1.5) -> None:
     """Checkbox + writing line rows filling *panel*."""
     gr, gg, gb = theme.rule_c()
-    fill = theme.box_fill() or WHITE
+    fill = theme.box_fill() or theme.surface_c()
     n = max(1, int((panel.h - 2) / spacing))
     pdf.set_line_width(0.28)
     radius = _container_radius(theme, 0.7)
@@ -592,7 +592,7 @@ def progress_bar(pdf: FPDF, theme: Theme, x: float, y: float, w: float,
     br, bg_, bb = blend(theme.rgb("grid_line"), theme.structural(), 0.5)
     pdf.set_draw_color(br, bg_, bb)
     pdf.set_line_width(0.35)
-    fill = theme.box_fill() or WHITE
+    fill = theme.box_fill() or theme.surface_c()
     pdf.set_fill_color(*fill)
     radius = _container_radius(theme, h / 2)
     _rect_maybe_round(pdf, x, y, w, h, "FD", radius)
@@ -657,7 +657,7 @@ def outline_button(pdf: FPDF, theme: Theme, x: float, y: float, w: float,
                    h: float, text: str, link: int | None = None) -> None:
     """White rounded button with border, like 'BACK TO CALENDAR' in the ref."""
     br, bg_, bb = blend(theme.rgb("text"), theme.structural(), 0.5)
-    pdf.set_fill_color(*WHITE)
+    pdf.set_fill_color(*theme.surface_c())
     pdf.set_draw_color(br, bg_, bb)
     pdf.set_line_width(0.4)
     radius = 1.0 if theme.container == "squared_hairline" else h / 2
