@@ -55,8 +55,10 @@ EOF
 echo "wrote $TUNNEL_CONFIG"
 
 echo "== 3/5 DNS route ======================================================"
-# Creates the CNAME $HOSTNAME_FQDN -> $TUNNEL_ID.cfargotunnel.com (proxied).
-cloudflared tunnel route dns "$TUNNEL_NAME" "$HOSTNAME_FQDN" 2>&1 | tail -1 || true
+# Creates/overwrites the CNAME $HOSTNAME_FQDN -> $TUNNEL_ID.cfargotunnel.com.
+# Always address the tunnel by ID: cloudflared 2026.3 resolved the NAME
+# "etsy-dashboard" to the pre-existing castlefight tunnel (wrong CNAME).
+cloudflared tunnel route dns --overwrite-dns "$TUNNEL_ID" "$HOSTNAME_FQDN" 2>&1 | tail -1 || true
 
 echo "== 4/5 LaunchAgents (survive reboots) ================================="
 # A hand-started dashboard (python scripts/run_dashboard.py in a terminal)
@@ -77,7 +79,7 @@ cat > "$TUNNEL_PLIST" <<EOF
     <string>$(command -v cloudflared)</string>
     <string>--no-autoupdate</string>
     <string>tunnel</string><string>--config</string><string>$TUNNEL_CONFIG</string>
-    <string>run</string><string>$TUNNEL_NAME</string>
+    <string>run</string><string>$TUNNEL_ID</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -92,6 +94,7 @@ cat > "$DASH_PLIST" <<EOF
   <key>Label</key><string>com.paulinecolobong.etsy-dashboard</string>
   <key>ProgramArguments</key><array>
     <string>$REPO/.venv/bin/python</string>
+    <string>-u</string>
     <string>$REPO/scripts/run_dashboard.py</string>
   </array>
   <key>WorkingDirectory</key><string>$REPO</string>
