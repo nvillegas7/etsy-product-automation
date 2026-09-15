@@ -12,6 +12,17 @@ internet ──HTTPS──> planner.castlefight.net (Cloudflare edge)
                            └─ http://localhost:5001 (Flask dashboard)
 ```
 
+## Status
+
+**Live since 2026-09-15:** https://planner.castlefight.net → tunnel
+`etsy-dashboard` (id `cc5dead2-37f7-4b5a-828e-a3828f60a7fb`), both
+LaunchAgents loaded. Verified from the internet: 401 without credentials,
+200 with, 403 on a cross-site POST; `nakama.castlefight.net` unaffected.
+
+Gotcha: `cloudflared` 2026.3 resolves the tunnel *name* `etsy-dashboard`
+to the older `castlefight` tunnel (`tunnel info` / `route dns`). Always
+address this tunnel by ID -- the script does.
+
 ## Setup / go-live
 
 One command (idempotent):
