@@ -11,12 +11,17 @@ and every path is resolved server-side through the database.
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
+import secrets
 import threading
+import time
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import structlog
 import yaml
@@ -438,7 +443,13 @@ def create_app(config: dict | None = None) -> Flask:
         config = _load_default_config()
 
     app = Flask(__name__)
-    app.secret_key = config.get("dashboard", {}).get("secret_key", "product-studio-local")
+    # Session-signing key: env wins, then config, else a fresh random key per
+    # process (a predictable default would let anyone forge session cookies).
+    app.secret_key = (
+        os.getenv("DASHBOARD_SECRET_KEY", "").strip()
+        or config.get("dashboard", {}).get("secret_key")
+        or secrets.token_hex(32)
+    )
 
     # init_db also applies lightweight column migrations for older DBs.
     init_db(_database_url(config))
@@ -461,18 +472,100 @@ def create_app(config: dict | None = None) -> Flask:
     dash_password = os.getenv("DASHBOARD_PASSWORD", "").strip()
     dash_user = os.getenv("DASHBOARD_USER", "admin").strip()
 
+    # Brute-force throttle: after AUTH_MAX_FAILURES bad logins from one client
+    # inside AUTH_FAIL_WINDOW seconds, that client gets 429 for the window.
+    # State is per app instance (tests build several apps).
+    auth_max_failures = int(os.getenv("DASHBOARD_AUTH_MAX_FAILURES", "8"))
+    auth_fail_window = int(os.getenv("DASHBOARD_AUTH_FAIL_WINDOW", str(15 * 60)))
+    auth_failures: dict[str, deque] = defaultdict(deque)
+    auth_lock = threading.Lock()
+
+    def _client_ip() -> str:
+        # Behind the local cloudflared tunnel the socket peer is loopback and
+        # the real client sits in CF-Connecting-IP. Trust that header ONLY
+        # when the peer is loopback, so a LAN client cannot spoof its bucket.
+        peer = request.remote_addr or "unknown"
+        if peer in ("127.0.0.1", "::1"):
+            forwarded = request.headers.get("CF-Connecting-IP", "").strip()
+            if forwarded:
+                return forwarded
+        return peer
+
+    def _recent_failures(ip: str, now: float) -> deque:
+        bucket = auth_failures[ip]
+        while bucket and now - bucket[0] > auth_fail_window:
+            bucket.popleft()
+        return bucket
+
+    def _credentials_ok(auth) -> bool:
+        if not auth or auth.username is None or auth.password is None:
+            return False
+        user_ok = hmac.compare_digest(auth.username.encode(), dash_user.encode())
+        pass_ok = hmac.compare_digest(auth.password.encode(), dash_password.encode())
+        return user_ok and pass_ok
+
     @app.before_request
     def _require_auth():
         if not dash_password:
             return None
+        ip = _client_ip()
+        now = time.monotonic()
+        with auth_lock:
+            if len(_recent_failures(ip, now)) >= auth_max_failures:
+                return Response(
+                    "Too many failed logins. Try again later.",
+                    429,
+                    {"Retry-After": str(auth_fail_window)},
+                )
         auth = request.authorization
-        if auth and auth.username == dash_user and auth.password == dash_password:
+        if _credentials_ok(auth):
+            with auth_lock:
+                auth_failures.pop(ip, None)
             return None
+        if auth is not None:  # credentials were supplied and were wrong
+            with auth_lock:
+                _recent_failures(ip, now).append(now)
         return Response(
             "Authentication required.",
             401,
             {"WWW-Authenticate": 'Basic realm="Product Studio"'},
         )
+
+    # ---------------- CSRF: writes must come from this origin ----------------
+    # Browsers attach cached Basic-Auth credentials to cross-site form posts,
+    # so a hostile page could otherwise approve/publish (Etsy fees) on the
+    # reviewer's behalf. Every state-changing request must carry an Origin /
+    # Referer matching this host (browsers always send at least one on a
+    # form POST); Fetch-Metadata cross-site requests are refused outright.
+
+    @app.before_request
+    def _writes_must_be_same_origin():
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return None
+        if request.headers.get("Sec-Fetch-Site", "").lower() == "cross-site":
+            abort(403)
+        for header in ("Origin", "Referer"):
+            value = request.headers.get(header, "").strip()
+            if not value:
+                continue
+            if value.lower() == "null" or urlsplit(value).netloc != request.host:
+                abort(403)
+        return None
+
+    @app.after_request
+    def _security_headers(response):
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("Content-Security-Policy",
+                                    "frame-ancestors 'none'")
+        # Honored by browsers only over HTTPS (the Cloudflare edge); harmless
+        # on the LAN.
+        response.headers.setdefault("Strict-Transport-Security",
+                                    "max-age=31536000")
+        if not request.path.startswith("/static/"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        return response
 
     # ---------------- session per request ----------------
 

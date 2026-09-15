@@ -21,6 +21,11 @@ import yaml
 
 from src.dashboard.app import PROJECT_ROOT, create_app
 
+try:  # production WSGI server; the Werkzeug dev server is the fallback
+    from waitress import serve as _waitress_serve
+except ImportError:  # pragma: no cover
+    _waitress_serve = None
+
 
 def _lan_ip() -> str:
     """Best-effort LAN IP of this machine (no traffic actually sent)."""
@@ -63,7 +68,11 @@ def main() -> None:
     print("  Press Ctrl+C to stop.")
     print()
 
-    app.run(host=host, port=port, debug=False)
+    if _waitress_serve is not None:
+        _waitress_serve(app, host=host, port=port, threads=8, ident=None)
+    else:
+        print("  (waitress not installed -- falling back to the dev server)")
+        app.run(host=host, port=port, debug=False)
 
 
 if __name__ == "__main__":

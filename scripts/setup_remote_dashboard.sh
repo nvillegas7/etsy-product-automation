@@ -59,6 +59,14 @@ echo "== 3/5 DNS route ======================================================"
 cloudflared tunnel route dns "$TUNNEL_NAME" "$HOSTNAME_FQDN" 2>&1 | tail -1 || true
 
 echo "== 4/5 LaunchAgents (survive reboots) ================================="
+# A hand-started dashboard (python scripts/run_dashboard.py in a terminal)
+# would keep port 5001 -- and, worse, keep serving whatever code it imported
+# when it was started. Retire it so the agent runs the current code.
+if pgrep -f "scripts/run_dashboard.py" >/dev/null; then
+  echo "stopping hand-started dashboard: $(pgrep -f 'scripts/run_dashboard.py' | tr '\n' ' ')"
+  pkill -f "scripts/run_dashboard.py" || true
+  sleep 2
+fi
 mkdir -p "$AGENTS"
 cat > "$TUNNEL_PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -67,6 +75,7 @@ cat > "$TUNNEL_PLIST" <<EOF
   <key>Label</key><string>com.paulinecolobong.cloudflared-planner</string>
   <key>ProgramArguments</key><array>
     <string>$(command -v cloudflared)</string>
+    <string>--no-autoupdate</string>
     <string>tunnel</string><string>--config</string><string>$TUNNEL_CONFIG</string>
     <string>run</string><string>$TUNNEL_NAME</string>
   </array>
