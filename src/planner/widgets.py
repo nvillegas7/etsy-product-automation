@@ -90,20 +90,26 @@ def fit_role_text(pdf: FPDF, theme: Theme, role: str, text: str,
     spec = theme.role(role)
     cased = theme.case(role, text)
     size = max_size if max_size is not None else spec.size
-    tracking = spec.tracking
-    if role in SEARCHABLE_ROLES:
-        tracking = searchable_tracking(size, tracking)
-    try:
-        pdf.set_char_spacing(tracking)
-    except Exception:
-        pass
     fam = theme._family(spec.family)
+
+    def select(sz: float) -> None:
+        # Tracking is re-clamped per size: a shrunk searchable label must
+        # stay inside the extraction-safe budget at its final size.
+        tracking = spec.tracking
+        if role in SEARCHABLE_ROLES:
+            tracking = searchable_tracking(sz, tracking)
+        try:
+            pdf.set_char_spacing(tracking)
+        except Exception:
+            pass
+        pdf.set_font(fam, spec.style, sz)
+
     while size > min_size:
-        pdf.set_font(fam, spec.style, size)
+        select(size)
         if pdf.get_string_width(cased) <= max_width:
             return cased, size
         size -= 0.5
-    pdf.set_font(fam, spec.style, min_size)
+    select(min_size)
     return cased, min_size
 
 
@@ -392,10 +398,14 @@ def table(pdf: FPDF, theme: Theme, panel: Panel,
           columns: list[tuple[str, float]], n_rows: int,
           header_h: float = 7.5, zebra: bool = False,
           row_labels: list[str] | None = None,
-          font_size: float | None = None) -> float:
+          font_size: float | None = None,
+          check_cols: tuple[str, ...] = ()) -> float:
     """Reference-style table: header band + thin ruled grid.
 
-    *columns* is ``[(label, width_fraction), ...]``.  Returns row height.
+    *columns* is ``[(label, width_fraction), ...]``; every column named in
+    *check_cols* is a tick-off column with a centred checkbox per row
+    (reviewer: the exam schedule needs a real "check box column").
+    Returns row height.
     """
     font_size = font_size or theme.fonts.size_small
     band = theme.band_fill()
@@ -412,12 +422,14 @@ def table(pdf: FPDF, theme: Theme, panel: Panel,
         pdf.rect(panel.x, panel.y, panel.w, header_h, style="D")
 
     pdf.set_text_color(tr, tg, tb)
-    theme.set_type(pdf, "band_label", size=font_size - 1)
     x = panel.x
     col_ws = [panel.w * f for _, f in columns]
     for (label, _), cw in zip(columns, col_ws):
+        # Shrink only a header that would overrun its own column.
+        cased, _ = fit_role_text(pdf, theme, "band_label", label, cw - 2,
+                                 min_size=7, max_size=font_size)
         pdf.set_xy(x, panel.y)
-        pdf.cell(cw, header_h, theme.case("band_label", label), align="C")
+        pdf.cell(cw, header_h, cased, align="C")
         x += cw
     _reset_tracking(pdf)
 
@@ -444,10 +456,30 @@ def table(pdf: FPDF, theme: Theme, panel: Panel,
         x += cw
         pdf.line(x, panel.y, x, panel.y2)
 
+    check_x = []
+    x = panel.x
+    for (label, _), cw in zip(columns, col_ws):
+        if label in check_cols:
+            check_x.append(x + cw / 2)
+        x += cw
+    if check_x:
+        box = min(3.6, row_h * 0.5)
+        pdf.set_fill_color(*(theme.box_fill() or theme.surface_c()))
+        pdf.set_draw_color(*blend(theme.rgb("grid_line"), theme.structural(),
+                                  0.25))
+        pdf.set_line_width(0.28)
+        radius = _container_radius(theme, 0.7)
+        for cx in check_x:
+            for i in range(n_rows):
+                cy = panel.y + header_h + i * row_h + row_h / 2
+                _rect_maybe_round(pdf, cx - box / 2, cy - box / 2, box, box,
+                                  "FD", radius)
+
     if row_labels:
-        theme.set_type(pdf, "mini_digit", size=font_size - 1)
         pdf.set_text_color(*theme.rgb("text_light"))
         for i, lbl in enumerate(row_labels[:n_rows]):
+            fit_role_text(pdf, theme, "mini_digit", lbl, col_ws[0] - 3,
+                          min_size=7, max_size=font_size)
             pdf.set_xy(panel.x + 1.5, panel.y + header_h + i * row_h)
             pdf.cell(col_ws[0] - 2, row_h, lbl, align="L")
         _reset_tracking(pdf)
@@ -602,12 +634,12 @@ def progress_bar(pdf: FPDF, theme: Theme, x: float, y: float, w: float,
         tx = x + w * i / ticks
         pdf.line(tx, y + 1.2, tx, y + h - 1.2)
     # Percent labels at ends
-    theme.set_type(pdf, "mini_digit", size=5.5)
+    theme.set_type(pdf, "mini_digit", size=8)
     pdf.set_text_color(*theme.rgb("text_light"))
-    pdf.set_xy(x - 2, y + h + 0.6)
-    pdf.cell(10, 3, "0%", align="L")
-    pdf.set_xy(x + w - 8, y + h + 0.6)
-    pdf.cell(10, 3, "100%", align="R")
+    pdf.set_xy(x - 2, y + h + 0.8)
+    pdf.cell(12, 3.5, "0%", align="L")
+    pdf.set_xy(x + w - 10, y + h + 0.8)
+    pdf.cell(12, 3.5, "100%", align="R")
     _reset_tracking(pdf)
     pdf.set_text_color(*theme.rgb("text"))
 
@@ -663,11 +695,14 @@ def outline_button(pdf: FPDF, theme: Theme, x: float, y: float, w: float,
     radius = 1.0 if theme.container == "squared_hairline" else h / 2
     pdf.rect(x, y, w, h, style="FD", round_corners=True, corner_radius=radius)
     pdf.set_text_color(*blend(theme.rgb("text"), theme.structural(), 0.3))
-    pdf.set_font(theme.body, "B", 7)   # chrome is always Inter
     try:
         pdf.set_char_spacing(0.4)
     except Exception:
         pass
+    # chrome is always Inter; shrink only a label that would overrun the pill
+    size = fit_text(pdf, text.upper(), theme.body, "B", 8.5, w - 5,
+                    min_size=6.5)
+    pdf.set_font(theme.body, "B", size)
     pdf.set_xy(x, y)
     if link is not None:
         pdf.cell(w, h, text.upper(), align="C", link=link)

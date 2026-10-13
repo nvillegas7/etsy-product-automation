@@ -32,6 +32,7 @@ from src.planner.widgets import (
     blend,
     checkbox_lines,
     fill_texture,
+    fit_role_text,
     labelled_box,
     mood_faces,
     progress_bar,
@@ -136,7 +137,7 @@ def _numbered_lines(pdf: FPDF, ctx: PageContext, panel: Panel, n: int) -> None:
     for i in range(n):
         ly = panel.y + (i + 1) * gap - 2
         pdf.set_text_color(*theme.rgb("text_light"))
-        theme.set_type(pdf, "inline_label", size=7)
+        theme.set_type(pdf, "inline_label", size=9.5)
         pdf.set_xy(panel.x, ly - 3.5)
         pdf.cell(6, 4, f"{i + 1}.", align="L")
         pdf.set_draw_color(*gr)
@@ -146,7 +147,7 @@ def _numbered_lines(pdf: FPDF, ctx: PageContext, panel: Panel, n: int) -> None:
 def _month_cols_header(pdf: FPDF, ctx: PageContext, x: float, y: float,
                        cell_w: float, h: float) -> None:
     months = "JFMAMJJASOND"
-    ctx.theme.set_type(pdf, "inline_label", size=5.2)
+    ctx.theme.set_type(pdf, "inline_label", size=8)
     pdf.set_text_color(*ctx.theme.band_text_c())
     for i, ch in enumerate(months):
         pdf.set_xy(x + i * cell_w, y)
@@ -210,33 +211,35 @@ def _savings_goals(pdf: FPDF, ctx: PageContext) -> None:
             pdf.rect(card.x, card.y, card.w, card.h, style="FD",
                      round_corners=True, corner_radius=2.2)
             inner = card.inset(6, 5)
-            theme.set_type(pdf, "inline_label", size=7.5)
+            theme.set_type(pdf, "inline_label", size=10)
             pdf.set_text_color(*theme.rgb("text_light"))
+            sw = pdf.get_string_width("SAVING FOR") + 1.5
             pdf.set_xy(inner.x, inner.y)
-            pdf.cell(28, 5, "SAVING FOR", align="L")
+            pdf.cell(sw, 5, "SAVING FOR", align="L")
             pdf.set_draw_color(*gr)
-            pdf.line(inner.x + 29, inner.y + 4.4, inner.x2, inner.y + 4.4)
+            pdf.line(inner.x + sw + 1.5, inner.y + 4.4, inner.x2, inner.y + 4.4)
             row_y = inner.y + 12
             half = inner.w / 2
             for i, lbl in enumerate(("GOAL AMOUNT", "DEADLINE")):
+                lw = pdf.get_string_width(lbl) + 1.5
                 pdf.set_xy(inner.x + i * half, row_y)
-                pdf.cell(30, 5, lbl, align="L")
-                pdf.line(inner.x + i * half + 31, row_y + 4.4,
+                pdf.cell(lw, 5, lbl, align="L")
+                pdf.line(inner.x + i * half + lw + 1.5, row_y + 4.4,
                          inner.x + (i + 1) * half - 6, row_y + 4.4)
             y = section_label(pdf, theme, inner.x, row_y + 10, "Progress",
-                              size=7)
+                              size=9)
             progress_bar(pdf, theme, inner.x + 1, y + 1, inner.w - 8, h=7,
                          ticks=10)
             # Deposit log fills the rest of the card
             y = section_label(pdf, theme, inner.x, y + 14, "Deposit Log",
-                              size=7)
+                              size=9)
             log = Panel(inner.x, y, inner.w, inner.y2 - y)
             if log.h > 12:
                 table(pdf, theme, log,
                       [("Date", 0.25), ("Amount", 0.25), ("Date", 0.25),
                        ("Amount", 0.25)],
-                      n_rows=max(2, int((log.h - 6) / 8)), header_h=5.5,
-                      font_size=6.5)
+                      n_rows=max(2, int((log.h - 7) / 8)), header_h=6.5,
+                      font_size=9)
 
 
 def _bill_tracker(pdf: FPDF, ctx: PageContext) -> None:
@@ -255,7 +258,7 @@ def _bill_tracker(pdf: FPDF, ctx: PageContext) -> None:
         if band is not None:
             pdf.set_fill_color(*band)
             pdf.rect(grid.x, grid.y, grid.w, header_h, style="F")
-        theme.set_type(pdf, "inline_label", size=6)
+        theme.set_type(pdf, "inline_label", size=8.5)
         pdf.set_text_color(*theme.band_text_c())
         pdf.set_xy(grid.x, grid.y)
         pdf.cell(bill_w, header_h, "BILL", align="C")
@@ -294,7 +297,7 @@ def _debt_tracker(pdf: FPDF, ctx: PageContext) -> None:
     prog = Panel(rsecs[0].x, y + 2, rsecs[0].w, rsecs[0].y2 - y - 2)
     gr = theme.rule_c()
     for row in prog.rows(5, gap=6):
-        theme.set_type(pdf, "inline_label", size=6.5)
+        theme.set_type(pdf, "inline_label", size=9)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(row.x, row.y)
         pdf.cell(14, 4, "DEBT", align="L")
@@ -316,7 +319,8 @@ def _subscription_tracker(pdf: FPDF, ctx: PageContext) -> None:
                       underline_w=lb.w)
     table(pdf, theme, Panel(lb.x, y, lb.w, lb.y2 - y),
           [("Service", 0.34), ("Cost", 0.16), ("Billing", 0.18),
-           ("Renewal", 0.18), ("Cancel?", 0.14)], n_rows=16, zebra=True)
+           ("Renewal", 0.18), ("Cancel?", 0.14)], n_rows=16, zebra=True,
+          check_cols=("Cancel?",))
 
     rsecs = rb.split_v([0.14, 0.5, 0.36], gap=7)
     for box, label in zip(rsecs[0].cols(2, gap=6),
@@ -350,14 +354,17 @@ def _class_schedule(pdf: FPDF, ctx: PageContext) -> None:
         if band is not None:
             pdf.set_fill_color(*band)
             pdf.rect(panel.x, panel.y, panel.w, header_h, style="F")
-        theme.set_type(pdf, "inline_label", size=7.5)
+        # Reviewer: class-schedule fonts too small -- day headers and hour
+        # labels sized to the roomy timetable cells, hours in a firmer ink.
+        theme.set_type(pdf, "inline_label", size=11)
         pdf.set_text_color(*theme.band_text_c())
         for i, d in enumerate(days):
             pdf.set_xy(panel.x + time_w + i * day_w, panel.y)
             pdf.cell(day_w, header_h, d.upper(), align="C")
         gr = theme.rule_c()
-        theme.set_type(pdf, "mini_digit", size=6.8)
-        pdf.set_text_color(*theme.rgb("text_light"))
+        theme.set_type(pdf, "mini_digit", size=10.5)
+        pdf.set_text_color(*blend(theme.rgb("text_light"), theme.rgb("text"),
+                                  0.35))
         for i, hour in enumerate(hours):
             hy = panel.y + header_h + i * row_h
             h12 = hour if hour <= 12 else hour - 12
@@ -388,7 +395,8 @@ def _assignment_tracker(pdf: FPDF, ctx: PageContext) -> None:
     cols = [("Due", 0.13), ("Course", 0.2), ("Assignment", 0.45),
             ("Priority", 0.12), ("Done", 0.10)]
     for panel in (ctx.geo.left_body(), ctx.geo.right_body()):
-        table(pdf, theme, panel, cols, n_rows=22, zebra=True)
+        table(pdf, theme, panel, cols, n_rows=22, zebra=True,
+              check_cols=("Done",))
 
 
 def _exam_tracker(pdf: FPDF, ctx: PageContext) -> None:
@@ -401,7 +409,7 @@ def _exam_tracker(pdf: FPDF, ctx: PageContext) -> None:
     table(pdf, theme, Panel(lb.x, y, lb.w, lb.y2 - y),
           [("Date", 0.15), ("Time", 0.14), ("Subject", 0.35),
            ("Location", 0.20), ("Done", 0.16)],
-          n_rows=16, zebra=True)
+          n_rows=16, zebra=True, check_cols=("Done",))
 
     y = section_label(pdf, theme, rb.x, rb.y, "Study Priorities",
                       underline_w=rb.w)
@@ -443,13 +451,13 @@ def _semester_goals(pdf: FPDF, ctx: PageContext) -> None:
         pdf.rect(card.x, card.y, card.w, card.h, style="D",
                  round_corners=True, corner_radius=2)
         inner = card.inset(5, 4)
-        theme.set_type(pdf, "inline_label", size=7)
+        theme.set_type(pdf, "inline_label", size=9.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(inner.x, inner.y)
         pdf.cell(14, 5, "GOAL", align="L")
         pdf.set_draw_color(*gr)
         pdf.line(inner.x + 15, inner.y + 4.2, inner.x2, inner.y + 4.2)
-        y2 = section_label(pdf, theme, inner.x, inner.y + 8, "Steps", size=6.5)
+        y2 = section_label(pdf, theme, inner.x, inner.y + 8, "Steps", size=9)
         checkbox_lines(pdf, theme, Panel(inner.x, y2 - 1, inner.w,
                                          inner.y2 - y2 + 1), spacing=7.8)
     rsecs = rb.split_v([0.45, 0.3, 0.25], gap=7)
@@ -472,7 +480,8 @@ def _reading_list(pdf: FPDF, ctx: PageContext) -> None:
     y = section_label(pdf, theme, lb.x, lb.y, "Required Reading",
                       underline_w=lb.w)
     table(pdf, theme, Panel(lb.x, y, lb.w, lb.y2 - y), cols, n_rows=16,
-          zebra=True, row_labels=[str(i + 1) for i in range(16)])
+          zebra=True, row_labels=[str(i + 1) for i in range(16)],
+          check_cols=("Read",))
     rsecs = rb.split_v([0.62, 0.38], gap=7)
     y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Reading for Fun",
                       underline_w=rsecs[0].w)
@@ -493,7 +502,7 @@ def _school_fees(pdf: FPDF, ctx: PageContext) -> None:
     table(pdf, theme, Panel(lb.x, y, lb.w, lb.y2 - y),
           [("Item / Expense", 0.38), ("Amount", 0.18), ("Due Date", 0.18),
            ("Paid", 0.12), ("Notes", 0.14)],
-          n_rows=17, zebra=True)
+          n_rows=17, zebra=True, check_cols=("Paid",))
 
     rsecs = rb.split_v([0.58, 0.42], gap=8)
     y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Priority to Settle",
@@ -575,7 +584,10 @@ def _fitness_goals(pdf: FPDF, ctx: PageContext) -> None:
 def _workout_log(pdf: FPDF, ctx: PageContext) -> None:
     theme = ctx.theme
     lb, rb = ctx.geo.left_body(), ctx.geo.right_body()
-    for panel in (lb, rb):
+    # Both logs end 6 mm early so the split legend sits inside the body,
+    # clear of the page footer.
+    for panel in (Panel(lb.x, lb.y, lb.w, lb.h - 6),
+                  Panel(rb.x, rb.y, rb.w, rb.h - 6)):
         secs = panel.split_v([0.05, 0.05, 0.58, 0.16, 0.16], gap=4)
         _inline_fields(pdf, ctx, secs[0], ("Date", "Split", "Body Wt"))
         _inline_fields(pdf, ctx, secs[1], ("Warm-Up", "Energy 1-5"))
@@ -591,7 +603,7 @@ def _workout_log(pdf: FPDF, ctx: PageContext) -> None:
         foot = secs[4].split_v([0.5, 0.5], gap=2)
         _rating_row(pdf, ctx, foot[0], "How I felt", extra="PR hit?")
         _inline_fields(pdf, ctx, foot[1], ("Cool-down & notes",))
-    _note(pdf, ctx, lb.x, lb.y2 + 1.5, lb.w, "Split: " + _SPLIT_LEGEND)
+    _note(pdf, ctx, lb.x, lb.y2 - 4.5, lb.w, "Split: " + _SPLIT_LEGEND)
 
 
 def _weekly_split(pdf: FPDF, ctx: PageContext) -> None:
@@ -650,7 +662,7 @@ def _measurements(pdf: FPDF, ctx: PageContext) -> None:
     for i in range(n_cols + 1):
         xx = chart.x + i * chart.w / n_cols
         pdf.line(xx, chart.y, xx, chart.y2)
-    theme.set_type(pdf, "mini_digit", size=5.2)
+    theme.set_type(pdf, "mini_digit", size=8)
     pdf.set_text_color(*theme.rgb("text_light"))
     col_w = chart.w / n_cols
     for i in range(n_cols):
@@ -690,13 +702,14 @@ def _meal_planner(pdf: FPDF, ctx: PageContext) -> None:
            ("C", 0.11), ("F", 0.11)],
           n_rows=len(_MACRO_ROWS), row_labels=_MACRO_ROWS,
           font_size=_PREFILL_FONT, zebra=True)
-    theme.set_type(pdf, "inline_label", size=7.0)
+    theme.set_type(pdf, "inline_label", size=9.5)
     pdf.set_text_color(*theme.rgb("text_light"))
     wy = rsecs[1].y + rsecs[1].h / 2 - 2.5
+    ww = pdf.get_string_width("WATER · 8 GLASSES") + 2
     pdf.set_xy(rsecs[1].x, wy)
-    pdf.cell(34, 5, "WATER · 8 GLASSES", align="L")
+    pdf.cell(ww, 5, "WATER · 8 GLASSES", align="L")
     _reset_tracking(pdf)
-    water_droplets(pdf, theme, rsecs[1].x + 40, wy + 0.6, n=8, gap=7.5)
+    water_droplets(pdf, theme, rsecs[1].x + ww + 5, wy + 0.6, n=8, gap=7.5)
     pdf.set_text_color(*theme.rgb("text"))
     rsub = rsecs[2].split_v([0.5, 0.5], gap=6)
     y = section_label(pdf, theme, rsub[0].x, rsub[0].y,
@@ -718,7 +731,7 @@ def _hydration_steps(pdf: FPDF, ctx: PageContext) -> None:
     row_h = grid.h / 16
     for i in range(16):
         ry = grid.y + i * row_h
-        theme.set_type(pdf, "inline_label", size=6)
+        theme.set_type(pdf, "inline_label", size=8.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(grid.x, ry)
         pdf.cell(14, row_h, f"Day {i + 1}", align="L")
@@ -740,14 +753,14 @@ def _hydration_steps(pdf: FPDF, ctx: PageContext) -> None:
         x = chart.x + i * col_w
         pdf.rect(x + col_w * 0.2, chart.y, col_w * 0.6, chart.h, style="D",
                  round_corners=("TOP_LEFT", "TOP_RIGHT"), corner_radius=1.2)
-        theme.set_type(pdf, "mini_digit", size=5)
+        theme.set_type(pdf, "mini_digit", size=8)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(x, chart.y2 + 1)
         pdf.cell(col_w, 3, str(i + 1), align="C")
     for i, lbl in enumerate(("10k", "7.5k", "5k", "2.5k")):
         yy = chart.y + i * chart.h / 4
         pdf.set_xy(rsecs[0].x - 2, yy - 1.5)
-        theme.set_type(pdf, "mini_digit", size=5)
+        theme.set_type(pdf, "mini_digit", size=8)
         pdf.cell(14, 3, lbl, align="L")
         pdf.set_draw_color(*gr)
         pdf.line(chart.x, yy, chart.x2, yy)
@@ -782,7 +795,7 @@ def _progress_photos(pdf: FPDF, ctx: PageContext) -> None:
                      round_corners=True, corner_radius=1.5)
             pdf.ellipse(ccx - 2.4, ccy - 1.9, 4.8, 4.8, style="D")
             pdf.rect(ccx - 2, ccy - 5.8, 4, 2, style="D")
-            theme.set_type(pdf, "inline_label", size=6.5)
+            theme.set_type(pdf, "inline_label", size=9)
             pdf.set_text_color(*theme.rgb("text_light"))
             pdf.set_xy(frame.x, frame.y2 + 1.5)
             pdf.cell(frame.w, 4, lbl, align="C")
@@ -839,7 +852,7 @@ def _brain_dump(pdf: FPDF, ctx: PageContext) -> None:
     _accent_note_font(pdf, theme, 13)
     pdf.set_text_color(*blend(theme.rgb("primary"), theme.rgb("text"), 0.15))
     pdf.set_xy(lb.x, y + 1)
-    pdf.cell(lb.w, 8, "no filter, no order — just write", align="C")
+    pdf.cell(lb.w, 8, "no filter, no order · just write", align="C")
     fill_texture(pdf, theme, Panel(lb.x, y + 12, lb.w, lb.y2 - y - 12),
                  kind="notes")
 
@@ -884,7 +897,7 @@ def _time_blocking(pdf: FPDF, ctx: PageContext) -> None:
     col_w = (grid.w - time_w) / 2
     hours = list(range(7, 22))
     row_h = grid.h / len(hours)
-    theme.set_type(pdf, "inline_label", size=6)
+    theme.set_type(pdf, "inline_label", size=8.5)
     pdf.set_text_color(*theme.band_text_c())
     for i, lbl in enumerate(("THE PLAN", "WHAT HAPPENED")):
         pdf.set_xy(grid.x + time_w + i * col_w, y)
@@ -893,7 +906,7 @@ def _time_blocking(pdf: FPDF, ctx: PageContext) -> None:
         hy = grid.y + i * row_h
         h12 = hour if hour <= 12 else hour - 12
         ampm = "AM" if hour < 12 else "PM"
-        theme.set_type(pdf, "mini_digit", size=5.6)
+        theme.set_type(pdf, "mini_digit", size=8)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(grid.x, hy)
         pdf.cell(time_w - 1, row_h, f"{h12}{ampm.lower()}", align="R")
@@ -951,11 +964,12 @@ def _routine_builder(pdf: FPDF, ctx: PageContext) -> None:
             pdf.set_draw_color(*gr)
             pdf.line(grid.x + 7, ry + row_h * 0.66, grid.x + grid.w - time_w - 4,
                      ry + row_h * 0.66)
-            theme.set_type(pdf, "mini_digit", size=5.6)
+            theme.set_type(pdf, "mini_digit", size=8)
             pdf.set_text_color(*theme.rgb("text_light"))
+            tk = pdf.get_string_width("takes") + 1
             pdf.set_xy(grid.x + grid.w - time_w, ry + row_h * 0.15)
-            pdf.cell(8, 3.5, "takes", align="L")
-            pdf.line(grid.x + grid.w - time_w + 9, ry + row_h * 0.66,
+            pdf.cell(tk, 3.5, "takes", align="L")
+            pdf.line(grid.x + grid.w - time_w + tk + 1, ry + row_h * 0.66,
                      grid.x2 - 1, ry + row_h * 0.66)
         labelled_box(pdf, theme, secs[1], "If I Only Have 10 Minutes...",
                      lines_spacing=8.2)
@@ -1000,7 +1014,7 @@ def _energy_tracker(pdf: FPDF, ctx: PageContext) -> None:
     hours = list(range(6, 23, 2))
     col_w = grid.w / len(days)
     row_h = grid.h / len(hours)
-    theme.set_type(pdf, "inline_label", size=5.4)
+    theme.set_type(pdf, "inline_label", size=8)
     pdf.set_text_color(*theme.band_text_c())
     for i, d in enumerate(days):
         pdf.set_xy(grid.x + i * col_w, y + 1)
@@ -1009,7 +1023,7 @@ def _energy_tracker(pdf: FPDF, ctx: PageContext) -> None:
         hy = grid.y + i * row_h
         h12 = hour if hour <= 12 else hour - 12
         ampm = "a" if hour < 12 else "p"
-        theme.set_type(pdf, "mini_digit", size=5.4)
+        theme.set_type(pdf, "mini_digit", size=8)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(lb.x, hy + row_h / 2 - 1.8)
         pdf.cell(14, 3.5, f"{h12}{ampm}", align="L")
@@ -1026,8 +1040,8 @@ def _energy_tracker(pdf: FPDF, ctx: PageContext) -> None:
     rsecs = rb.split_v([0.16, 0.28, 0.28, 0.28], gap=6)
     # Legend
     y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Legend")
-    legend = ("High — deep work", "Medium — admin & errands",
-              "Low — rest, no guilt")
+    legend = ("High · deep work", "Medium · admin & errands",
+              "Low · rest, no guilt")
     fills = (0.55, 0.3, 0.12)
     for i, (lbl, op) in enumerate(zip(legend, fills)):
         lx = rsecs[0].x + 2
@@ -1036,7 +1050,7 @@ def _energy_tracker(pdf: FPDF, ctx: PageContext) -> None:
             pdf.set_fill_color(*theme.rgb("primary"))
             pdf.rect(lx, ly, 5, 4, style="F", round_corners=True,
                      corner_radius=0.8)
-        theme.set_type(pdf, "mini_digit", size=6.5)
+        theme.set_type(pdf, "mini_digit", size=9)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(lx + 7, ly)
         pdf.cell(60, 4, lbl, align="L")
@@ -1060,7 +1074,7 @@ def _lesson_plan(pdf: FPDF, ctx: PageContext) -> None:
     gr = theme.rule_c()
 
     top = Panel(lb.x, lb.y, lb.w, 12)
-    theme.set_type(pdf, "inline_label", size=7)
+    theme.set_type(pdf, "inline_label", size=9.5)
     pdf.set_text_color(*theme.rgb("text_light"))
     thirds = top.cols(3, gap=6)
     for cell, lbl in zip(thirds, ("SUBJECT", "GRADE / CLASS", "DATE")):
@@ -1101,7 +1115,7 @@ def _grade_book(pdf: FPDF, ctx: PageContext) -> None:
         if band is not None:
             pdf.set_fill_color(*band)
             pdf.rect(panel.x, panel.y, panel.w, header_h, style="F")
-        theme.set_type(pdf, "inline_label", size=6)
+        theme.set_type(pdf, "inline_label", size=8.5)
         pdf.set_text_color(*theme.band_text_c())
         pdf.set_xy(panel.x, panel.y)
         pdf.cell(name_w, header_h, "STUDENT", align="C")
@@ -1149,7 +1163,7 @@ def _meeting_notes(pdf: FPDF, ctx: PageContext) -> None:
     gr = theme.rule_c()
 
     top = Panel(lb.x, lb.y, lb.w, 12)
-    theme.set_type(pdf, "inline_label", size=7)
+    theme.set_type(pdf, "inline_label", size=9.5)
     pdf.set_text_color(*theme.rgb("text_light"))
     for cell, lbl in zip(top.cols(2, gap=6), ("MEETING / TOPIC", "DATE & TIME")):
         pdf.set_xy(cell.x, cell.y + 2)
@@ -1192,7 +1206,7 @@ def _curriculum_overview(pdf: FPDF, ctx: PageContext) -> None:
         if band is not None:
             pdf.set_fill_color(*band)
             pdf.rect(grid.x, grid.y, grid.w, header_h, style="F")
-        theme.set_type(pdf, "inline_label", size=6)
+        theme.set_type(pdf, "inline_label", size=8.5)
         pdf.set_text_color(*theme.band_text_c())
         pdf.set_xy(grid.x, grid.y)
         pdf.cell(label_w, header_h, "", align="C")
@@ -1204,7 +1218,7 @@ def _curriculum_overview(pdf: FPDF, ctx: PageContext) -> None:
                      grid.y + header_h - 2)
         for i, m in enumerate(mset):
             ry = grid.y + header_h + i * row_h
-            theme.set_type(pdf, "inline_label", size=6.2)
+            theme.set_type(pdf, "inline_label", size=8.5)
             pdf.set_text_color(*theme.rgb("text_light"))
             pdf.set_xy(grid.x, ry)
             pdf.cell(label_w - 2, row_h, m, align="C")
@@ -1254,15 +1268,18 @@ def _label_grid(pdf: FPDF, ctx: PageContext, panel: Panel,
     if band is not None:
         pdf.set_fill_color(*band)
         pdf.rect(panel.x, panel.y, panel.w, header_h, style="F")
-    theme.set_type(pdf, "inline_label", size=6.0)
     pdf.set_text_color(*theme.band_text_c())
     for i, head in enumerate(col_heads):
+        fit_role_text(pdf, theme, "inline_label", head.upper(), col_w - 2,
+                      min_size=6.5, max_size=8.5)
         pdf.set_xy(panel.x + label_w + i * col_w, panel.y)
         pdf.cell(col_w, header_h, head.upper(), align="C")
+    _reset_tracking(pdf)
     gr = theme.rule_c()
     for i, rh in enumerate(row_heads):
         ry = panel.y + header_h + i * row_h
-        theme.set_type(pdf, "inline_label", size=6.2)
+        fit_role_text(pdf, theme, "inline_label", rh.upper(), label_w - 3,
+                      min_size=6.5, max_size=8.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(panel.x + 1, ry)
         pdf.cell(label_w - 2, row_h, rh.upper(), align="L")
@@ -1293,7 +1310,7 @@ def _day_timeline(pdf: FPDF, ctx: PageContext, panel: Panel, title: str,
         ry = grid.y + i * row_h
         h12 = hr if hr <= 12 else hr - 12
         ampm = "am" if hr < 12 else "pm"
-        theme.set_type(pdf, "mini_digit", size=5.6)
+        theme.set_type(pdf, "mini_digit", size=8)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(grid.x, ry)
         pdf.cell(time_w - 1.5, row_h, f"{h12}{ampm}", align="R")
@@ -1316,13 +1333,13 @@ def _day_timeline(pdf: FPDF, ctx: PageContext, panel: Panel, title: str,
 # system's own type roles so every preset/palette lane stays consistent.
 # ---------------------------------------------------------------------------
 
-#: Table font for pre-filled tables: row labels render at (size - 1), so
-#: 8.5 gives 7.5pt labels -- legible on iPad without crowding the grid.
-_PREFILL_FONT = 8.5
+#: Table font for pre-filled tables (headers + row labels; both shrink only
+#: to fit a narrow column) -- legible on iPad without crowding the grid.
+_PREFILL_FONT = 10
 
 
 def _note(pdf: FPDF, ctx: PageContext, x: float, y: float, w: float,
-          text: str, size: float = 6.2) -> None:
+          text: str, size: float = 9) -> None:
     """One quiet line of guidance text (legends, measuring tips)."""
     theme = ctx.theme
     theme.set_type(pdf, "mini_digit", size=size)
@@ -1334,7 +1351,7 @@ def _note(pdf: FPDF, ctx: PageContext, x: float, y: float, w: float,
 
 
 def _inline_fields(pdf: FPDF, ctx: PageContext, panel: Panel,
-                   labels: tuple, size: float = 7.0) -> None:
+                   labels: tuple, size: float = 9.5) -> None:
     """``LABEL ______   LABEL ______`` across one row (date / split / ...)."""
     theme = ctx.theme
     gr = theme.rule_c()
@@ -1356,7 +1373,7 @@ def _inline_fields(pdf: FPDF, ctx: PageContext, panel: Panel,
 
 
 def _field_rows(pdf: FPDF, ctx: PageContext, panel: Panel, labels: tuple,
-                label_w: float | None = None, size: float = 6.5) -> None:
+                label_w: float | None = None, size: float = 9) -> None:
     """Stacked ``LABEL ________`` rows filling *panel* (form-style)."""
     theme = ctx.theme
     gr = theme.rule_c()
@@ -1379,7 +1396,7 @@ def _field_rows(pdf: FPDF, ctx: PageContext, panel: Panel, labels: tuple,
 
 def _checklist_items(pdf: FPDF, ctx: PageContext, panel: Panel, items: tuple,
                      spacing: float = 7.6, box_size: float = 3.4,
-                     inset: float = 1.5, size: float = 6.8) -> None:
+                     inset: float = 1.5, size: float = 10) -> None:
     """Checkbox rows with pre-printed *items*; remaining rows stay blank."""
     theme = ctx.theme
     gr = theme.rule_c()
@@ -1396,11 +1413,12 @@ def _checklist_items(pdf: FPDF, ctx: PageContext, panel: Panel, items: tuple,
         _rect_maybe_round(pdf, panel.x + inset, y, box_size, box_size, "FD",
                           radius)
         if i < len(items):
-            theme.set_type(pdf, "mini_digit", size=size)
+            item_w = panel.x2 - inset - text_x
+            fit_role_text(pdf, theme, "mini_digit", items[i], item_w,
+                          min_size=7.5, max_size=size)
             pdf.set_text_color(*theme.rgb("text"))
             pdf.set_xy(text_x, y - 0.6)
-            pdf.cell(panel.x2 - inset - text_x, box_size + 1.2, items[i],
-                     align="L")
+            pdf.cell(item_w, box_size + 1.2, items[i], align="L")
             _reset_tracking(pdf)
         pdf.set_draw_color(*gr)
         pdf.set_line_width(0.28)
@@ -1434,7 +1452,7 @@ def _rating_row(pdf: FPDF, ctx: PageContext, panel: Panel, label: str,
                 extra: str | None = None) -> None:
     """``LABEL  (5 faces)   EXTRA ____`` -- a one-line feeling check-in."""
     theme = ctx.theme
-    theme.set_type(pdf, "inline_label", size=7.0)
+    theme.set_type(pdf, "inline_label", size=9.5)
     pdf.set_text_color(*theme.rgb("text_light"))
     text = label.upper()
     tw = pdf.get_string_width(text) + 2
@@ -1552,7 +1570,8 @@ def _trip_overview(pdf: FPDF, ctx: PageContext) -> None:
           [("Booking", 0.4), ("Confirmation #", 0.32), ("Paid", 0.13),
            ("Confirmed", 0.15)],
           n_rows=len(_TRIP_BOOKINGS), row_labels=_TRIP_BOOKINGS,
-          font_size=_PREFILL_FONT, zebra=True)
+          font_size=_PREFILL_FONT, zebra=True,
+          check_cols=("Paid", "Confirmed"))
 
 
 def _itinerary(pdf: FPDF, ctx: PageContext) -> None:
@@ -1610,7 +1629,7 @@ def _accommodation(pdf: FPDF, ctx: PageContext) -> None:
                    ("Depart · Time", 0.2), ("Arrive · Time", 0.2),
                    ("Seat", 0.12)], n_rows=7, zebra=True)
     _titled_table(pdf, ctx, lsecs[1], "Trains · Ferries · Buses · Rental Car",
-                  [("Type", 0.16), ("From → To", 0.34), ("Date · Time", 0.22),
+                  [("Type", 0.16), ("From / To", 0.34), ("Date · Time", 0.22),
                    ("Ref #", 0.16), ("Cost", 0.12)], n_rows=7, zebra=True)
     for card, lbl in zip(rb.rows(3, gap=6), ("Stay 1", "Stay 2", "Stay 3")):
         inner = labelled_box(pdf, theme, card, lbl, lines_spacing=None)
@@ -1635,7 +1654,7 @@ def _travel_journal(pdf: FPDF, ctx: PageContext) -> None:
     _titled_table(pdf, ctx, lsecs[0], "Places to Visit",
                   [("Place", 0.3), ("Area", 0.16), ("Hours", 0.16),
                    ("Fee", 0.12), ("Booked", 0.13), ("Visited", 0.13)],
-                  n_rows=13, zebra=True)
+                  n_rows=13, zebra=True, check_cols=("Booked", "Visited"))
     _titled_table(pdf, ctx, lsecs[1], "Restaurants & Cafes to Try",
                   [("Name", 0.34), ("Cuisine", 0.2), ("Area", 0.18),
                    ("$", 0.1), ("Rating", 0.18)], n_rows=8, zebra=True)
@@ -1762,7 +1781,7 @@ def _wedding_overview(pdf: FPDF, ctx: PageContext) -> None:
     table(pdf, theme, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
           [("Milestone", 0.46), ("Date", 0.27), ("Done", 0.27)],
           n_rows=len(_KEY_DATES), zebra=True, row_labels=_KEY_DATES,
-          font_size=_PREFILL_FONT)
+          font_size=_PREFILL_FONT, check_cols=("Done",))
 
 
 def _wedding_timeline(pdf: FPDF, ctx: PageContext) -> None:
@@ -1807,7 +1826,7 @@ def _vendor_tracker(pdf: FPDF, ctx: PageContext) -> None:
     _titled_table(pdf, ctx, rsecs[0], "Prospects & Quotes · Compare",
                   [("Service", 0.2), ("Prospect", 0.26), ("Quote", 0.14),
                    ("Included / Notes", 0.28), ("Booked", 0.12)],
-                  n_rows=16, zebra=True)
+                  n_rows=16, zebra=True, check_cols=("Booked",))
     y = section_label(pdf, theme, rsecs[1].x, rsecs[1].y,
                       "Questions to Ask Every Vendor", underline_w=rsecs[1].w)
     _checklist_items(pdf, ctx, Panel(rsecs[1].x, y, rsecs[1].w, rsecs[1].y2 - y),
@@ -1843,7 +1862,7 @@ def _seating_chart(pdf: FPDF, ctx: PageContext) -> None:
                                       theme.structural(), 0.3))
             pdf.set_line_width(0.5)
             pdf.ellipse(cx - r, cy - r, r * 2, r * 2, style="D")
-            theme.set_type(pdf, "inline_label", size=6.5)
+            theme.set_type(pdf, "inline_label", size=9)
             pdf.set_text_color(*theme.rgb("text_light"))
             pdf.set_xy(cx - r, cy - 2)
             pdf.cell(r * 2, 4, f"T{start + i}", align="C")
@@ -1926,7 +1945,7 @@ def _recipe_card(pdf: FPDF, ctx: PageContext) -> None:
         pdf.rect(panel.x, panel.y, panel.w, panel.h, style="FD",
                  round_corners=True, corner_radius=2.5)
         inner = panel.inset(6, 5)
-        theme.set_type(pdf, "inline_label", size=7.5)
+        theme.set_type(pdf, "inline_label", size=10)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(inner.x, inner.y)
         pdf.cell(24, 5, "RECIPE", align="L")
@@ -1942,10 +1961,10 @@ def _recipe_card(pdf: FPDF, ctx: PageContext) -> None:
         body = Panel(inner.x, row_y + 10, inner.w, inner.y2 - row_y - 10)
         cols = body.cols(2, gap=8)
         y = section_label(pdf, theme, cols[0].x, cols[0].y, "Ingredients",
-                          size=7)
+                          size=9)
         checkbox_lines(pdf, theme, Panel(cols[0].x, y, cols[0].w,
                                          cols[0].y2 - y), spacing=7.4)
-        y = section_label(pdf, theme, cols[1].x, cols[1].y, "Method", size=7)
+        y = section_label(pdf, theme, cols[1].x, cols[1].y, "Method", size=9)
         ruled_lines(pdf, theme, Panel(cols[1].x, y, cols[1].w, cols[1].y2 - y),
                     spacing=7.4)
 
@@ -2031,7 +2050,7 @@ def _mood_tracker(pdf: FPDF, ctx: PageContext) -> None:
             pdf.set_line_width(0.3)
             pdf.rect(cx + 1, cy + 1, cw - 2, ch - 2, style="D",
                      round_corners=True, corner_radius=1.5)
-            theme.set_type(pdf, "mini_digit", size=6)
+            theme.set_type(pdf, "mini_digit", size=8.5)
             pdf.set_text_color(*theme.rgb("text_light"))
             pdf.set_xy(cx + 2, cy + 2)
             pdf.cell(6, 4, str(day), align="L")
@@ -2046,7 +2065,7 @@ def _mood_tracker(pdf: FPDF, ctx: PageContext) -> None:
             pdf.set_fill_color(*theme.rgb("primary"))
             pdf.rect(lx, ly, 6, 4.5, style="F", round_corners=True,
                      corner_radius=0.8)
-        theme.set_type(pdf, "mini_digit", size=7)
+        theme.set_type(pdf, "mini_digit", size=9.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(lx + 9, ly)
         pdf.cell(40, 4.5, lbl, align="L")
@@ -2077,11 +2096,11 @@ def _self_care_habits(pdf: FPDF, ctx: PageContext) -> None:
         if band is not None:
             pdf.set_fill_color(*band)
             pdf.rect(grid.x, grid.y, grid.w, header_h, style="F")
-        theme.set_type(pdf, "inline_label", size=5.5)
+        theme.set_type(pdf, "inline_label", size=8)
         pdf.set_text_color(*theme.band_text_c())
         pdf.set_xy(grid.x, grid.y)
         pdf.cell(label_w, header_h, "HABIT", align="C")
-        theme.set_type(pdf, "mini_digit", size=4.2)
+        theme.set_type(pdf, "mini_digit", size=6.5)
         for d in range(n_days):
             pdf.set_xy(grid.x + label_w + d * day_w, grid.y + 1)
             pdf.cell(day_w, header_h - 2, str(d + 1), align="C")
@@ -2141,7 +2160,7 @@ def _affirmations(pdf: FPDF, ctx: PageContext) -> None:
         pdf.set_line_width(0.3)
         pdf.rect(card.x, card.y, card.w, card.h, style="D",
                  round_corners=True, corner_radius=2.5)
-        theme.set_type(pdf, "inline_label", size=8)
+        theme.set_type(pdf, "inline_label", size=10.5)
         pdf.set_text_color(*blend(theme.rgb("primary"), theme.rgb("text"), 0.2))
         prompt_w = pdf.get_string_width("I am") + 2
         pdf.set_xy(card.x + 5, card.y + card.h / 2 - 3)
@@ -2197,7 +2216,8 @@ def _cleaning_schedule(pdf: FPDF, ctx: PageContext) -> None:
                       "Weekly Focus by Day", underline_w=lsecs[1].w)
     table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
           [("Day", 0.2), ("Cleaning Focus", 0.62), ("Done", 0.18)], n_rows=7,
-          row_labels=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+          row_labels=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          check_cols=("Done",))
     rsecs = rb.split_v([0.6, 0.4], gap=7)
     y = section_label(pdf, theme, rsecs[0].x, rsecs[0].y, "Monthly Deep Clean",
                       underline_w=rsecs[0].w)
@@ -2251,7 +2271,7 @@ def _bills_budget(pdf: FPDF, ctx: PageContext) -> None:
                       underline_w=lsecs[1].w)
     table(pdf, theme, Panel(lsecs[1].x, y, lsecs[1].w, lsecs[1].y2 - y),
           [("Bill", 0.34), ("Due", 0.16), ("Amount", 0.2), ("Paid", 0.16),
-           ("Auto", 0.14)], n_rows=15, zebra=True)
+           ("Auto", 0.14)], n_rows=15, zebra=True, check_cols=("Paid",))
     _titled_table(pdf, ctx, rb, "Household Spending",
                   [("Date", 0.16), ("Category", 0.24), ("Description", 0.4),
                    ("Amount", 0.2)], n_rows=18, zebra=True)
@@ -2373,7 +2393,7 @@ def _marketing_planner(pdf: FPDF, ctx: PageContext) -> None:
     if band is not None:
         pdf.set_fill_color(*band)
         pdf.rect(grid.x, grid.y, grid.w, header_h, style="F")
-    theme.set_type(pdf, "inline_label", size=5.6)
+    theme.set_type(pdf, "inline_label", size=8)
     pdf.set_text_color(*theme.band_text_c())
     for i, d in enumerate(days):
         pdf.set_xy(grid.x + i * cw, grid.y)
@@ -2393,7 +2413,8 @@ def _marketing_planner(pdf: FPDF, ctx: PageContext) -> None:
     rsecs = rb.split_v([0.5, 0.5], gap=7)
     _titled_table(pdf, ctx, rsecs[0], "Post Planner",
                   [("Date", 0.16), ("Platform", 0.2), ("Content / Caption", 0.44),
-                   ("Done", 0.2)], n_rows=10, zebra=True)
+                   ("Done", 0.2)], n_rows=10, zebra=True,
+                  check_cols=("Done",))
     rb2 = rsecs[1].split_v([0.5, 0.5], gap=6)
     labelled_box(pdf, theme, rb2[0], "Hashtag & Keyword Bank",
                  lines_spacing=8.0)

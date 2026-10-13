@@ -218,71 +218,80 @@ def _v(fam: str, style: str, size: float, case: str = "as-given",
 
 # 12 roles per voice ("pennant" and "chrome" are handled by their widgets;
 # chrome is ALWAYS Inter for fit/legibility).
+#
+# Legibility type scale (reviewer: "fonts are too small"): the page is
+# 1366 x 1024 pt and shows ~1:1 on a 12.9" iPad (0.87x on an 11"), so
+# functional text stays >= ~9 pt -- labels 9.5-10.5, calendar digits 12+,
+# chrome tabs 8.5-9 -- in line with the competitor reference on the same
+# canvas.  The cursive script face is reserved for the 30 pt cover year
+# numerals; every title and label is a readable face (reviewer: "avoid hard
+# to read font"), and Inter Light is never used below 12 pt.
 VOICES: dict[str, dict[str, RoleSpec]] = {
     "classic": {
         "page_title":     _v("body", "B", 19),
-        "page_subtitle":  _v("body", "", 8.5),
-        "section_label":  _v("body", "B", 8.5, "upper", 0.45),
-        "band_label":     _v("body", "B", 8.5, "upper", 0.4),
-        "calendar_digit": _v("body", "", 8),
-        "mini_digit":     _v("body", "", 5.8),
-        "inline_label":   _v("body", "B", 7),
+        "page_subtitle":  _v("body", "", 10.5),
+        "section_label":  _v("body", "B", 10, "upper", 0.45),
+        "band_label":     _v("body", "B", 10, "upper", 0.4),
+        "calendar_digit": _v("body", "", 12),
+        "mini_digit":     _v("body", "", 9),
+        "inline_label":   _v("body", "B", 9.5),
         "display_title":  _v("display", "B", 46),
         "cover_year":     _v("script", "", 30),
-        "cover_subtitle": _v("script", "", 17),
+        "cover_subtitle": _v("display", "", 16),
     },
     "serif": {
         "page_title":     _v("display", "", 21, "title"),
-        "page_subtitle":  _v("body", "", 8.5),
-        "section_label":  _v("body", "B", 8, "upper", 0.8),
-        "band_label":     _v("body", "B", 8, "upper", 0.4),
-        "calendar_digit": _v("display", "", 8.5),
-        "mini_digit":     _v("body", "", 5.8),
-        "inline_label":   _v("body", "B", 7),
+        "page_subtitle":  _v("body", "", 10.5),
+        "section_label":  _v("body", "B", 10, "upper", 0.8),
+        "band_label":     _v("body", "B", 10, "upper", 0.4),
+        "calendar_digit": _v("display", "", 13),
+        "mini_digit":     _v("body", "", 9),
+        "inline_label":   _v("body", "B", 9.5),
         "display_title":  _v("display", "B", 50),
         "cover_year":     _v("script", "", 30),
-        "cover_subtitle": _v("script", "", 17),
+        "cover_subtitle": _v("display", "", 16),
     },
     # Grotesk tracking sits at the SEARCHABLE_TRACKING_RATIO budget for the
     # searchable roles (0.12 x size); the editorial look above that budget
     # comes from case/weight, not spacing (extraction stays word-intact).
     "grotesk": {
         "page_title":     _v("body", "B", 17, "upper", 1.2),
-        "page_subtitle":  _v("body", "", 8, "upper", 0.8),
-        "section_label":  _v("body", "B", 7.5, "upper", 0.9),
-        "band_label":     _v("body", "B", 7.5, "upper", 0.9),
-        "calendar_digit": _v("body", "B", 8),
-        "mini_digit":     _v("body", "", 5.8),
-        "inline_label":   _v("body", "B", 7, "as-given", 0.8),
+        "page_subtitle":  _v("body", "", 10, "upper", 0.8),
+        "section_label":  _v("body", "B", 9.5, "upper", 0.9),
+        "band_label":     _v("body", "B", 9.5, "upper", 0.9),
+        "calendar_digit": _v("body", "B", 12),
+        "mini_digit":     _v("body", "", 9),
+        "inline_label":   _v("body", "B", 9.5, "as-given", 0.8),
         "display_title":  _v("body", "I", 44, "upper", 4.0),
         "cover_year":     _v("body", "I", 26, "as-given", 3.1),
-        "cover_subtitle": _v("body", "", 10, "upper", 2.5),
+        "cover_subtitle": _v("body", "", 12, "upper", 2.5),
     },
     "script": {
-        # Page headers use the readable display serif -- the cursive script
-        # face stays on the cover/display_title only (functional legibility).
+        # Titles use the readable display serif -- a cursive cover title read
+        # poorly (all-caps words like "ADHD" turn into swashes) -- and small
+        # roles use Inter Regular, not Light (reviewer: hard to read).
         "page_title":     _v("display", "", 23, "title"),
-        "page_subtitle":  _v("body", "I", 9),
-        "section_label":  _v("body", "I", 9, "lower", 0.8),
-        "band_label":     _v("body", "", 8, "title", 0.6),
-        "calendar_digit": _v("body", "I", 8.5),
-        "mini_digit":     _v("body", "I", 6),
-        "inline_label":   _v("body", "", 7.5),
-        "display_title":  _v("script", "", 54),
+        "page_subtitle":  _v("body", "", 10.5),
+        "section_label":  _v("body", "", 10.5, "lower", 0.8),
+        "band_label":     _v("body", "", 10, "title", 0.6),
+        "calendar_digit": _v("body", "", 12),
+        "mini_digit":     _v("body", "", 9),
+        "inline_label":   _v("body", "", 9.5),
+        "display_title":  _v("display", "", 54),
         "cover_year":     _v("display", "", 22),
-        "cover_subtitle": _v("body", "I", 8, "upper", 2.5),
+        "cover_subtitle": _v("body", "", 11, "upper", 1.0),
     },
     "typewriter": {
         "page_title":     _v("courier", "B", 16, "upper"),
-        "page_subtitle":  _v("courier", "", 8),
-        "section_label":  _v("courier", "B", 8, "upper"),
-        "band_label":     _v("courier", "", 7.5, "upper"),
-        "calendar_digit": _v("courier", "", 8),
-        "mini_digit":     _v("courier", "", 5.4),
-        "inline_label":   _v("courier", "B", 7),
+        "page_subtitle":  _v("courier", "", 10),
+        "section_label":  _v("courier", "B", 10, "upper"),
+        "band_label":     _v("courier", "B", 9.5, "upper"),
+        "calendar_digit": _v("courier", "", 12),
+        "mini_digit":     _v("courier", "", 9),
+        "inline_label":   _v("courier", "B", 9),
         "display_title":  _v("courier", "B", 40, "upper"),
         "cover_year":     _v("courier", "", 18),
-        "cover_subtitle": _v("courier", "", 9),
+        "cover_subtitle": _v("courier", "", 11),
     },
 }
 

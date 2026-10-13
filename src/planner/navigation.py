@@ -307,7 +307,7 @@ def render_top_tabs(
                  corner_radius=TOP_TAB_CORNER_RADIUS)
 
         pdf.set_text_color(*txt)
-        size = fit_text(pdf, label, theme.body, "B", 6.6, tab_w - 2.5, min_size=4.6)
+        size = fit_text(pdf, label, theme.body, "B", 9, tab_w - 2.5, min_size=6.5)
         pdf.set_font(theme.body, "B", size)
         pdf.set_xy(x, TOP_TAB_Y)
         pdf.cell(tab_w, TOP_TAB_HEIGHT - 1.0, label, align="C")
@@ -365,7 +365,7 @@ def _draw_side_tab(
 
     # Rotated label (reads top-to-bottom like the reference)
     pdf.set_text_color(*text_color)
-    pdf.set_font(theme.body, "B", 6.4 if not active else 7.0)
+    pdf.set_font(theme.body, "B", 8.5 if not active else 9.0)
     cx = x + w / 2 + (1.2 if side == "R" else -0.2)
     cy = y + h / 2
     text_w = pdf.get_string_width(label)
@@ -444,7 +444,7 @@ def render_footer(pdf: FPDF, theme: Theme, brand: str = "Made with love",
                   x: float = LEFT_CONTENT_X, y: float = FOOTER_Y) -> None:
     """Small quiet footer text inside the paper bottom edge."""
     pdf.set_text_color(*blend(theme.rgb("text_light"), theme.paper_c(), 0.35))
-    pdf.set_font(theme.body, "", 5.8)
+    pdf.set_font(theme.body, "", 7)
     pdf.set_xy(x, y)
     pdf.cell(120, 4, f"© {brand} · Digital Planner", align="L")
     pdf.set_text_color(0, 0, 0)
@@ -493,7 +493,7 @@ def render_back_button(
     from src.planner.widgets import outline_button  # local import, avoids cycle
 
     link_id = nav.get_link(target_key)
-    pdf.set_font(theme.body, "B", 7)
+    pdf.set_font(theme.body, "B", 8.5)
     w = max(40.0, pdf.get_string_width(label.upper()) + 14)
     outline_button(pdf, theme, RIGHT_CONTENT_RIGHT - w, PAPER_Y + 4.5, w, 8.5,
                    label, link=link_id)
@@ -514,9 +514,10 @@ def render_pennant(
 ) -> None:
     """Pennant flag with the month name + year, hanging off the top.
 
-    The text styling is voice-aware; the classic/serif voices keep the
-    script month + Inter Bold year exactly as before.  ``year_text`` overrides
-    the printed year (e.g. ``"20__"`` for undated builds).
+    The text styling is voice-aware: grotesk/typewriter set small caps;
+    every other voice sets the month in the readable display serif with the
+    year in Inter below.  ``year_text`` overrides the printed year (e.g.
+    ``"20__"`` for undated builds).
     """
     year_str = str(year) if year_text is None else year_text
     from src.planner.layout import PENNANT_X, PENNANT_Y, PENNANT_W, PENNANT_H, PENNANT_NOTCH
@@ -549,8 +550,8 @@ def render_pennant(
     voice = theme.design.voice
     pdf.set_text_color(*WHITE)
     if voice == "grotesk":
-        size = fit_text(pdf, month_name.upper(), theme.body, "B", 9,
-                        w - 4, min_size=6.5)
+        size = fit_text(pdf, month_name.upper(), theme.body, "B", 10,
+                        w - 6, min_size=7)
         pdf.set_font(theme.body, "B", size)
         try:
             # Month names are searchable: clamp to the extraction budget.
@@ -563,34 +564,28 @@ def render_pennant(
             pdf.set_char_spacing(0)
         except Exception:
             pass
-        pdf.set_font(theme.body, "", 8)
+        pdf.set_font(theme.body, "", 10)
         pdf.set_xy(px, py + 11)
         pdf.cell(w, 8, year_str, align="C")
     elif voice == "typewriter":
-        size = fit_text(pdf, month_name.upper(), "Courier", "B", 9,
-                        w - 4, min_size=6.5)
+        size = fit_text(pdf, month_name.upper(), "Courier", "B", 10.5,
+                        w - 4, min_size=7)
         pdf.set_font("Courier", "B", size)
         pdf.set_xy(px, py + 4)
         pdf.cell(w, 8, month_name.upper(), align="C")
-        pdf.set_font("Courier", "", 8)
+        pdf.set_font("Courier", "", 10)
         pdf.set_xy(px, py + 11)
         pdf.cell(w, 8, year_str, align="C")
-    elif voice == "script":
-        size = fit_text(pdf, month_name, theme.script, "", 18, w - 4,
-                        min_size=9)
-        pdf.set_font(theme.script, "", size)
-        pdf.set_xy(px, py + 2.5)
-        pdf.cell(w, 8, month_name, align="C")
-        pdf.set_font(theme.body, "I", 10)
-        pdf.set_xy(px, py + 10.5)
-        pdf.cell(w, 8, year_str, align="C")
-    else:   # classic / serif -- exact pre-design rendering
-        size = fit_text(pdf, month_name, theme.script, "",
+    else:
+        # classic / serif / script: the month name is a navigation label, so
+        # it uses the readable display serif -- never the cursive script face
+        # (reviewer: "avoid hard to read font").
+        size = fit_text(pdf, month_name, theme.display, "",
                         theme.fonts.size_pennant, w - 4, min_size=9)
-        pdf.set_font(theme.script, "", size)
+        pdf.set_font(theme.display, "", size)
         pdf.set_xy(px, py + 2.5)
         pdf.cell(w, 8, month_name, align="C")
-        pdf.set_font(theme.body, "B", 11)
+        pdf.set_font(theme.body, "B" if voice != "script" else "", 11)
         pdf.set_xy(px, py + 10.5)
         pdf.cell(w, 8, year_str, align="C")
     pdf.set_text_color(0, 0, 0)
@@ -687,8 +682,8 @@ class CardsShell:
                      round_corners=("TOP_LEFT", "BOTTOM_LEFT"),
                      corner_radius=2.2)
             pdf.set_text_color(*txt)
-            size = fit_text(pdf, label, theme.body, "B", 6.0, tab_h - 4,
-                            min_size=4.4)
+            size = fit_text(pdf, label, theme.body, "B", 8.5, tab_h - 4,
+                            min_size=6.0)
             pdf.set_font(theme.body, "B", size)
             cx = x + (w - 2.0) / 2 - 0.2
             cy = y + tab_h / 2
@@ -727,16 +722,16 @@ class CardsShell:
 
         coin(0, "YR",
              blend(theme.rgb("tab_inactive"), theme.rgb("primary"), 0.28),
-             inactive_text, 7.5, NavigationManager.year_glance_key(), 5.2)
+             inactive_text, 7.5, NavigationManager.year_glance_key(), 8.0)
         for m in range(1, 13):
             if m == active_slot:
                 continue
             coin(m, MONTH_ABBREVS[m - 1], _month_tab_fill(theme, m),
-                 inactive_text, 7.5, NavigationManager.month_key(m), 5.2)
+                 inactive_text, 7.5, NavigationManager.month_key(m), 8.0)
         if active_slot >= 1:
             coin(active_slot, MONTH_ABBREVS[active_slot - 1],
                  theme.active_tab_c(), WHITE, 9.0,
-                 NavigationManager.month_key(active_slot), 5.6)
+                 NavigationManager.month_key(active_slot), 9.0)
         pdf.set_text_color(0, 0, 0)
 
     def back_button(self, pdf: FPDF, ctx, target_key: str, label: str) -> None:
@@ -744,7 +739,7 @@ class CardsShell:
 
         theme = ctx.theme
         link_id = ctx.nav.get_link(target_key)
-        pdf.set_font(theme.body, "B", 7)
+        pdf.set_font(theme.body, "B", 8.5)
         w = max(40.0, pdf.get_string_width(label.upper()) + 14)
         outline_button(pdf, theme, 457.0 - w, 20.0, w, 8.5, label, link=link_id)
 
@@ -800,8 +795,8 @@ class FlatShell:
                              (x + w, 13.0), (x, 13.0)], style="F")
                 txt = inactive_text
             pdf.set_text_color(*txt)
-            size = fit_text(pdf, label, theme.body, "B", 6.4, w - 5,
-                            min_size=4.8)
+            size = fit_text(pdf, label, theme.body, "B", 8.5, w - 5,
+                            min_size=6.0)
             pdf.set_font(theme.body, "B", size)
             pdf.set_xy(x, 2.0)
             pdf.cell(w, 11.0, label, align="C")
@@ -818,7 +813,7 @@ class FlatShell:
         """Centered small-caps category link row (INDEX first = home)."""
         theme = ctx.theme
         y, h = 346.8, 4.5
-        pdf.set_font(theme.body, "B", 6.5)
+        pdf.set_font(theme.body, "B", 8.5)
         try:
             pdf.set_char_spacing(0.6)
         except Exception:
@@ -857,7 +852,7 @@ class FlatShell:
             pass
         # Brand line only when it fits left of the centered row
         start_x = (PAGE_WIDTH - total) / 2
-        pdf.set_font(theme.body, "", 5.8)
+        pdf.set_font(theme.body, "", 7)
         brand_text = f"© {ctx.brand} · Digital Planner"
         if 22.0 + pdf.get_string_width(brand_text) + 8 < start_x:
             render_footer(pdf, theme, ctx.brand, x=22.0, y=347.2)
@@ -868,7 +863,7 @@ class FlatShell:
 
         theme = ctx.theme
         link_id = ctx.nav.get_link(target_key)
-        pdf.set_font(theme.body, "B", 7)
+        pdf.set_font(theme.body, "B", 8.5)
         w = max(40.0, pdf.get_string_width(label.upper()) + 14)
         outline_button(pdf, theme, 460.0 - w, 20.0, w, 8.5, label, link=link_id)
 
@@ -899,7 +894,7 @@ class PosterShell:
         # Footer: centered small caps
         pdf.set_text_color(*blend(theme.rgb("text_light"),
                                   theme.rgb("background"), 0.35))
-        pdf.set_font(theme.body, "B", 6)
+        pdf.set_font(theme.body, "B", 7.5)
         try:
             pdf.set_char_spacing(1.2)
         except Exception:
@@ -916,7 +911,7 @@ class PosterShell:
     def _header_categories(self, pdf: FPDF, ctx, active_tab: str | None) -> None:
         theme = ctx.theme
         y, h = 18.0, 8.0
-        pdf.set_font(theme.body, "B", 6.5)
+        pdf.set_font(theme.body, "B", 8.5)
         try:
             pdf.set_char_spacing(0.6)
         except Exception:
@@ -966,10 +961,10 @@ class PosterShell:
                 pdf.rect(x + 1.5, y, cell_w - 3, h, style="F",
                          round_corners=True, corner_radius=h / 2)
                 pdf.set_text_color(*WHITE)
-                pdf.set_font(theme.body, "B", 6.5)
+                pdf.set_font(theme.body, "B", 8.5)
             else:
                 pdf.set_text_color(*theme.rgb("text_light"))
-                pdf.set_font(theme.body, "", 6.5)
+                pdf.set_font(theme.body, "", 8.5)
             pdf.set_xy(x, y)
             pdf.cell(cell_w, h, label, align="C")
             if link_id is not None:
@@ -991,7 +986,7 @@ class PosterShell:
             ctx.deferred_subtitle = ""
         y, h = 29.0, 10.0
 
-        pdf.set_font(theme.body, "B", 7)
+        pdf.set_font(theme.body, "B", 8.5)
         try:
             pdf.set_char_spacing(0.6)
         except Exception:
@@ -1000,14 +995,14 @@ class PosterShell:
         lbl_w = pdf.get_string_width(lbl) + 1
         sub_w = 0.0
         if sub:
-            pdf.set_font(theme.body, "", 7)
+            pdf.set_font(theme.body, "", 9)
             sub_w = pdf.get_string_width(sub) + pdf.get_string_width("  ·  ")
         x = self.X1 - lbl_w - sub_w
         if sub:
             pdf.set_text_color(*theme.rgb("text_light"))
             pdf.set_xy(x, y)
             pdf.cell(sub_w, h, f"{sub}  ·  ")
-        pdf.set_font(theme.body, "B", 7)
+        pdf.set_font(theme.body, "B", 8.5)
         pdf.set_text_color(*blend(theme.rgb("text"), theme.structural(), 0.3))
         pdf.set_xy(self.X1 - lbl_w, y)
         if link_id is not None:

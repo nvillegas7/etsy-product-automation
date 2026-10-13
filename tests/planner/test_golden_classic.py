@@ -9,8 +9,12 @@ rendering changed -- which violates backward compatibility.
 Deliberately re-baselined 2026-07-10 to bless owner-directed reviewer-feedback
 improvements to shared chrome: the top tab "CALENDAR" -> "MONTHLY", the
 monthly-plan page -> "MONTH AT A GLANCE", and enlarged Year-at-a-Glance / index
-fonts.  Re-baseline only on such deliberate, reviewed changes -- never to make
-an unexplained failure pass.
+fonts.  Re-baselined again 2026-10-07 for the owner-directed legibility pass
+(reviewer: "fonts are too small", "avoid hard to read font"): the type scale
+grew to >= ~9 pt, and the index month links read "Calendar / At a Glance /
+Review".  Verified diff: same page count, outline and link targets; only link
+rects (larger labels) and that index text changed.  Re-baseline only on such
+deliberate, reviewed changes -- never to make an unexplained failure pass.
 """
 
 from __future__ import annotations

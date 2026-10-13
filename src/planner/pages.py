@@ -230,7 +230,8 @@ def page_header(
         tx = geo.left_x
         if month is not None:
             name = _cal.month_name[month]
-            pdf.set_font(theme.script, "", 20)
+            # Display serif, not the cursive script face (legibility).
+            pdf.set_font(theme.display, "", 20)
             pdf.set_text_color(*blend(theme.rgb("primary"),
                                       theme.rgb("text"), 0.1))
             mw = pdf.get_string_width(name)
@@ -249,12 +250,12 @@ def page_header(
     else:   # "plain" (poster)
         if month is not None:
             month_line = f"{_cal.month_name[month].upper()} · {_month_year_label(ctx, month)}"
-            pdf.set_font(theme.body, "B", 7)
+            pdf.set_font(theme.body, "B", 9)
             try:
                 # Month names are searchable content: clamp the small-caps
                 # tracking to the extraction-safe budget (1.2 pt at 7 pt
                 # split 'JANUARY' into per-letter words).
-                pdf.set_char_spacing(searchable_tracking(7, 1.2))
+                pdf.set_char_spacing(searchable_tracking(9, 1.2))
             except Exception:
                 pass
             pdf.set_text_color(*blend(theme.rgb("text"),
@@ -286,11 +287,11 @@ def _habit_mini_grid(pdf: FPDF, ctx: PageContext, panel: Panel,
     ch, cw = panel.h / rows_n, panel.w / cols_n
     pdf.set_draw_color(*gr)
     pdf.set_line_width(0.22)
-    pdf.set_font(theme.body, "B", 5.4)
+    pdf.set_font(theme.body, "B", 7.5)
     pdf.set_text_color(*theme.rgb("text_light"))
     for c in range(1, cols_n):
-        pdf.set_xy(panel.x + c * cw, panel.y - 3.4)
-        pdf.cell(cw, 3, WEEKDAY_LABELS[c - 1], align="C")
+        pdf.set_xy(panel.x + c * cw, panel.y - 3.8)
+        pdf.cell(cw, 3.4, WEEKDAY_LABELS[c - 1], align="C")
     for r in range(rows_n + 1):
         pdf.line(panel.x, panel.y + r * ch, panel.x2, panel.y + r * ch)
     for c in range(cols_n + 1):
@@ -298,7 +299,7 @@ def _habit_mini_grid(pdf: FPDF, ctx: PageContext, panel: Panel,
 
 
 def _numbered_priority_lines(pdf: FPDF, theme: Theme, panel: Panel,
-                             n: int = 3, size: float = 7.5) -> None:
+                             n: int = 3, size: float = 9.5) -> None:
     """'1.' text-numbered priority lines (the lighter treatment)."""
     gr = theme.rule_c()
     for i in range(n):
@@ -347,7 +348,7 @@ def _niche_pill(pdf: FPDF, theme: Theme, label: str, y: float,
     """Niche badge.  ``outline=True`` renders a white-stroked pill for
     covers whose background is the solid primary plate (a filled primary
     pill would vanish there)."""
-    pdf.set_font(theme.body, "B", 8.5)
+    pdf.set_font(theme.body, "B", 10)
     label = label.upper()
     try:
         pdf.set_char_spacing(1.2)
@@ -567,31 +568,14 @@ def _arch_meadow(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
 def _fit_band_title(pdf: FPDF, theme: Theme, shown: str, max_w: float,
                     max_lines: int = 3,
                     min_size: float = 15) -> tuple[list[str], float]:
-    """Title lines for text sitting ON a solid band.
-
-    Script faces are never reversed in solid bands (same rationale as the
-    validator rule): swap to the display face in title case.
-    """
-    if theme.role("display_title").family == "script":
-        cased = " ".join(w if w.isdigit() else w.capitalize()
-                         for w in shown.split())
-        size = fit_text(pdf, cased, theme.display, "B", 40, max_w,
-                        min_size=16)
-        lines = wrap_text(pdf, cased, theme.display, "B", size, max_w)
-        while len(lines) > max_lines and size > 16:
-            size -= 2
-            lines = wrap_text(pdf, cased, theme.display, "B", size, max_w)
-        return lines[:max_lines], size
+    """Title lines for text sitting ON a solid band (no voice sets its
+    display title in the cursive face, so nothing needs swapping)."""
     return _fit_title_lines(pdf, theme, shown, max_w, max_lines=max_lines,
                             min_size=min_size)
 
 
 def _band_subtitle_font(pdf: FPDF, theme: Theme, subtitle: str) -> str:
-    """Select the cover-subtitle face (script swaps to display) and return
-    the cased text."""
-    if theme.role("cover_subtitle").family == "script":
-        pdf.set_font(theme.display, "", 13)
-        return subtitle
+    """Select the cover-subtitle face and return the cased text."""
     theme.set_type(pdf, "cover_subtitle")
     return theme.case("cover_subtitle", subtitle)
 
@@ -638,9 +622,8 @@ def _band_left(pdf: FPDF, ctx: PageContext, title: str, display_title: str,
     pdf.rect(0, 0, band_w, PAGE_HEIGHT, style="F")
 
     # In-band text is reversed: script faces are never reversed -> serif
-    reversed_script = theme.role("display_title").family == "script"
     pdf.set_text_color(*WHITE)
-    if theme.role("cover_year").family == "script" or reversed_script:
+    if theme.role("cover_year").family == "script":
         pdf.set_font(theme.display, "", 26)
     else:
         theme.set_type(pdf, "cover_year")
@@ -1373,14 +1356,18 @@ class CoverPage:
 # ===================================================================
 
 def _accent_note_font(pdf: FPDF, theme: Theme, size: float) -> None:
-    """Handwriting-style accent font, coherent with the voice."""
+    """Accent face for month names / note headings, coherent with the voice.
+
+    Always a readable face -- the cursive script face is reserved for
+    display-size cover accents (reviewer: "avoid hard to read font").
+    """
     voice = theme.design.voice
     if voice == "grotesk":
-        pdf.set_font(theme.body, "I", size * 0.75)
+        pdf.set_font(theme.body, "B", size * 0.75)
     elif voice == "typewriter":
-        pdf.set_font("Courier", "", size * 0.75)
+        pdf.set_font("Courier", "B", size * 0.75)
     else:
-        pdf.set_font(theme.script, "", size)
+        pdf.set_font(theme.display, "", size)
 
 
 class IndexPage:
@@ -1412,20 +1399,23 @@ class IndexPage:
         y = section_label(pdf, theme, lb.x, lb.y, "Yearly", underline_w=lb.w)
         y += 1.5
         btn_w = (lb.w - 6) / 2
-        outline_button(pdf, theme, lb.x, y, btn_w, 9, "Year at a Glance",
+        outline_button(pdf, theme, lb.x, y, btn_w, 10, "Year at a Glance",
                        link=nav.get_link(NavigationManager.year_glance_key()))
-        outline_button(pdf, theme, lb.x + btn_w + 6, y, btn_w, 9, "Goals",
+        outline_button(pdf, theme, lb.x + btn_w + 6, y, btn_w, 10, "Goals",
                        link=nav.get_link(NavigationManager.goals_key()))
-        y += 15
+        y += 16
 
         y = section_label(pdf, theme, lb.x, y, "Monthly", underline_w=lb.w)
         y += 1.5
         rows, cols = 6, 2
         cell_w = (lb.w - 6) / cols
-        cell_h = (lb.y2 - y - 42) / rows
-        sub_labels = [("Cal", NavigationManager.month_key),
-                      ("Plan", NavigationManager.monthly_plan_key),
+        cell_h = (lb.y2 - y - 44) / rows
+        # Link names match the page titles (MONTHLY CALENDAR / MONTH AT A
+        # GLANCE / MONTHLY REVIEW) so the two monthly views stay distinct.
+        sub_labels = [("Calendar", NavigationManager.month_key),
+                      ("At a Glance", NavigationManager.monthly_plan_key),
                       ("Review", NavigationManager.monthly_review_key)]
+        pill_c = blend(theme.rgb("text"), theme.structural(), 0.3)
         for idx, m in enumerate(_slot_order(ctx)):
             col = idx % cols
             row = idx // cols
@@ -1437,25 +1427,32 @@ class IndexPage:
             pdf.set_line_width(0.3)
             pdf.rect(box.x, box.y, box.w, box.h, style="FD",
                      round_corners=True, corner_radius=1.6)
-            # Month name (accent face) + linked sub-labels -- enlarged for
-            # index legibility (reviewer: index fonts were too small).
+            # Two tiers fill the card (reviewer: index fonts too small, too
+            # much blank space): readable month name on top, a row of three
+            # link pills below it.
+            pill_h = min(8.0, box.h * 0.32)
+            name_h = box.h - pill_h - 4.5
             pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.3))
-            _accent_note_font(pdf, theme, 15)
-            pdf.set_xy(box.x + 4, box.y)
-            pdf.cell(38, box.h, _cal.month_name[m], align="L",
+            _accent_note_font(pdf, theme, 18)
+            pdf.set_xy(box.x + 4, box.y + 1)
+            pdf.cell(box.w - 8, name_h, _cal.month_name[m], align="L",
                      link=nav.get_link(NavigationManager.month_key(m)))
-            pdf.set_font(theme.body, "", 7)
-            pdf.set_text_color(*theme.rgb("text_light"))
-            sx = box.x + 46
-            for label, keyfn in sub_labels:
-                w = pdf.get_string_width(label) + 3
-                pdf.set_xy(sx, box.y)
-                pdf.cell(w, box.h, label, align="C", link=nav.get_link(keyfn(m)))
-                sx += w
-                if label != "Review":
-                    pdf.set_xy(sx, box.y)
-                    pdf.cell(3, box.h, "·", align="C")
-                    sx += 3
+            gap = 2.5
+            pw = (box.w - 8 - 2 * gap) / 3
+            py = box.y2 - pill_h - 3
+            pdf.set_line_width(0.25)
+            for i, (label, keyfn) in enumerate(sub_labels):
+                px = box.x + 4 + i * (pw + gap)
+                pdf.set_draw_color(*border)
+                pdf.rect(px, py, pw, pill_h, style="D", round_corners=True,
+                         corner_radius=pill_h / 2)
+                pdf.set_text_color(*pill_c)
+                size = fit_text(pdf, label, theme.body, "", 9.5, pw - 3,
+                                min_size=7.5)
+                pdf.set_font(theme.body, "", size)
+                pdf.set_xy(px, py)
+                pdf.cell(pw, pill_h, label, align="C",
+                         link=nav.get_link(keyfn(m)))
 
         y += rows * cell_h + 5
         y = section_label(pdf, theme, lb.x, y, "More", underline_w=lb.w)
@@ -1465,7 +1462,7 @@ class IndexPage:
                   ("Goals", NavigationManager.goals_key())]
         ew = (lb.w - 12) / 3
         for i, (label, key) in enumerate(extras):
-            outline_button(pdf, theme, lb.x + i * (ew + 6), y, ew, 9, label,
+            outline_button(pdf, theme, lb.x + i * (ew + 6), y, ew, 10, label,
                            link=nav.get_link(key))
 
         # ---- RIGHT: NICHE SECTION + CUSTOM ---------------------------------
@@ -1473,7 +1470,7 @@ class IndexPage:
         y = section_label(pdf, theme, rb.x, rb.y, title, underline_w=rb.w)
         y += 1.5
         niche_pages = niche_pages or []
-        row_h = 11.0
+        row_h = 12.0
         band = theme.band_fill()
         for i, np_cfg in enumerate(niche_pages):
             key = NavigationManager.niche_page_key(np_cfg["id"])
@@ -1488,11 +1485,11 @@ class IndexPage:
                 pdf.rect(box.x, box.y, box.w, box.h, style="D",
                          round_corners=True, corner_radius=1.6)
             pdf.set_text_color(*theme.band_text_c())
-            pdf.set_font(theme.body, "B", 8.5)
+            pdf.set_font(theme.body, "B", 10.5)
             pdf.set_xy(box.x + 6, box.y)
             pdf.cell(box.w - 24, box.h, np_cfg["label"], align="L",
                      link=nav.get_link(key))
-            pdf.set_font(theme.body, "", 8)
+            pdf.set_font(theme.body, "", 10.5)
             pdf.set_text_color(*theme.rgb("text_light")
                                if band != theme.rgb("primary")
                                else theme.reverse_text_c())
@@ -1570,7 +1567,7 @@ class YearGlancePage:
             pdf.rect(mm.x, mm.y, mm.w, mm.title_h, style="F",
                      round_corners=("TOP_LEFT", "TOP_RIGHT"), corner_radius=1.8)
         pdf.set_text_color(*theme.band_text_c())
-        pdf.set_font(theme.body, "B", 9)
+        pdf.set_font(theme.body, "B", 11)
         try:
             pdf.set_char_spacing(0.6)
         except Exception:
@@ -1582,16 +1579,16 @@ class YearGlancePage:
         except Exception:
             pass
 
-        # Weekday letters (enlarged for at-a-glance legibility)
-        pdf.set_font(theme.body, "B", 6.8)
+        # Weekday letters + day numbers sized to fill the mini-month cells
+        # (reviewer: "letters and numbers are too small" on this page).
+        pdf.set_font(theme.body, "B", 9.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         gy = mm.y + mm.title_h + 2.5
         for i, wd in enumerate(WEEKDAY_LABELS):
             pdf.set_xy(mm.x + i * mm.cell_w, gy)
             pdf.cell(mm.cell_w, mm.cell_h, wd, align="C")
 
-        # Day numbers (enlarged: the reviewers found the old ~5.8pt too small)
-        theme.set_type(pdf, "mini_digit", size=7.5)
+        theme.set_type(pdf, "mini_digit", size=12)
         pdf.set_text_color(*theme.rgb("text"))
         weeks = _grid_weeks(ctx, month)
         for r, week in enumerate(weeks):
@@ -1624,7 +1621,7 @@ def _monthly_boxed(pdf: FPDF, ctx: PageContext, month: int,
         pdf.set_text_color(*WHITE)
     else:
         pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.35))
-    pdf.set_font(theme.body, "B", 8.5)
+    pdf.set_font(theme.body, "B", 10.5)
     for i, label in enumerate(WEEKDAY_LABELS):
         pdf.set_xy(hx + i * cell_w, hy)
         pdf.cell(cell_w, row_h, label, align="C")
@@ -1714,7 +1711,7 @@ def _monthly_columns(pdf: FPDF, ctx: PageContext, month: int,
             pdf.set_fill_color(*theme.rgb("primary"))
             pdf.rect(col_x(i), lb.y, col_w(i), header_h, style="F")
             pdf.set_text_color(*WHITE)
-        theme.set_type(pdf, "band_label", size=7.5)
+        theme.set_type(pdf, "band_label", size=9.5)
         pdf.set_xy(col_x(i), lb.y)
         pdf.cell(col_w(i), header_h,
                  theme.case("band_label", WEEKDAY_NAMES[i]), align="C")
@@ -1744,7 +1741,7 @@ def _monthly_columns(pdf: FPDF, ctx: PageContext, month: int,
                 if d and d in week_link_map:
                     wi = week_link_map[d]
                     break
-        pdf.set_font(theme.body, "B", 5.5)
+        pdf.set_font(theme.body, "B", 7.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         wk_label = f"WEEK {wi + 1 if wi is not None else r + 1}"
         cx = lb.x + 3.4
@@ -1828,7 +1825,7 @@ def _monthly_airy(pdf: FPDF, ctx: PageContext, month: int,
         y = grid.y + r * grid.cell_h
         pdf.line(grid.x, y, grid.x + grid.width, y)
 
-    pdf.set_font(theme.body, "I", 9)   # Inter Light
+    theme.set_type(pdf, "calendar_digit")
     pdf.set_text_color(*theme.rgb("text"))
     for row_idx, week in enumerate(month_cal):
         for col_idx, day in enumerate(week):
@@ -1965,7 +1962,7 @@ class MonthlyPlanPage:
                           "Top Priorities")
         _numbered_priority_lines(pdf, theme,
                                  Panel(left_col[1].x, y, left_col[1].w,
-                                       left_col[1].y2 - y), n=3, size=7.5)
+                                       left_col[1].y2 - y), n=3)
         y2 = section_label(pdf, theme, left_col[2].x, left_col[2].y,
                            "To Do & Errands")
         checkbox_lines(pdf, theme,
@@ -2043,7 +2040,7 @@ class MonthlyReviewPage:
         pdf.set_line_width(0.35)
         pdf.rect(rate.x, rate.y, rate.w, rate.h, style="D",
                  round_corners=True, corner_radius=2)
-        theme.set_type(pdf, "inline_label", size=7.5)
+        theme.set_type(pdf, "inline_label", size=9.5)
         pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.3))
         pdf.set_xy(rate.x + 4, rate.y)
         pdf.cell(rate.w * 0.55, rate.h, "HOW WOULD YOU RATE THIS MONTH?",
@@ -2056,7 +2053,7 @@ class MonthlyReviewPage:
             pdf.set_fill_color(*soft)
             pdf.ellipse(cx - 4.6, cy - 4.6, 9.2, 9.2, style="F")
             pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.3))
-            pdf.set_font(theme.body, "B", 8.5)
+            pdf.set_font(theme.body, "B", 10.5)
             pdf.set_xy(cx - 4.6, cy - 4.6)
             pdf.cell(9.2, 9.2, str(i + 1), align="C")
 
@@ -2124,9 +2121,9 @@ def _weekly_boxed(pdf: FPDF, ctx: PageContext, week_index: int,
     for i in range(3):
         ly = y + 4 + i * ((extras[0].y2 - y - 3) / 3)
         pdf.set_text_color(*theme.rgb("text_light"))
-        theme.set_type(pdf, "inline_label", size=7)
-        pdf.set_xy(extras[0].x + 1, ly - 3)
-        pdf.cell(5, 4, f"{i + 1}.", align="L")
+        theme.set_type(pdf, "inline_label", size=9.5)
+        pdf.set_xy(extras[0].x + 1, ly - 3.5)
+        pdf.cell(6, 4.5, f"{i + 1}.", align="L")
         pdf.set_draw_color(*gr)
         pdf.line(extras[0].x + 7, ly + 1, extras[0].x2, ly + 1)
     _plain_reset(pdf, theme)
@@ -2156,7 +2153,7 @@ def _weekly_columns(pdf: FPDF, ctx: PageContext, week_index: int,
                  else f"{d.strftime('%a').upper()} · {d.day}")
         if theme.container == "open_air":
             pdf.set_text_color(*theme.label_c())
-            theme.set_type(pdf, "band_label", size=7.5)
+            theme.set_type(pdf, "band_label", size=9.5)
             pdf.set_xy(panel.x, panel.y + 1.5)
             pdf.cell(panel.w, band_h - 3, theme.case("band_label", label),
                      align="C")
@@ -2181,7 +2178,7 @@ def _weekly_columns(pdf: FPDF, ctx: PageContext, week_index: int,
             else:
                 pdf.rect(panel.x, panel.y, panel.w, band_h, style="D")
             pdf.set_text_color(*theme.band_text_c())
-            theme.set_type(pdf, "band_label", size=7.5)
+            theme.set_type(pdf, "band_label", size=9.5)
             pdf.set_xy(panel.x, panel.y)
             pdf.cell(panel.w, band_h, theme.case("band_label", label),
                      align="C")
@@ -2200,13 +2197,13 @@ def _weekly_columns(pdf: FPDF, ctx: PageContext, week_index: int,
     # Column 8: extras
     extras = rcols[3].split_v([0.25, 0.30, 0.45], gap=4)
     y = section_label(pdf, theme, extras[0].x, extras[0].y, "Priorities",
-                      size=7)
+                      size=9)
     priority_rows(pdf, theme, ctx.motif,
                   Panel(extras[0].x, y, extras[0].w, extras[0].y2 - y))
-    y = section_label(pdf, theme, extras[1].x, extras[1].y, "Habits", size=7)
+    y = section_label(pdf, theme, extras[1].x, extras[1].y, "Habits", size=9)
     _habit_mini_grid(pdf, ctx, Panel(extras[1].x, y + 1, extras[1].w,
                                      extras[1].y2 - y - 2))
-    y = section_label(pdf, theme, extras[2].x, extras[2].y, "Notes", size=7)
+    y = section_label(pdf, theme, extras[2].x, extras[2].y, "Notes", size=9)
     fill_texture(pdf, theme, Panel(extras[2].x, y, extras[2].w,
                                    extras[2].y2 - y), kind="notes")
     pdf.set_text_color(0, 0, 0)
@@ -2226,12 +2223,12 @@ def _weekly_hourly(pdf: FPDF, ctx: PageContext, week_index: int,
         pdf.set_font(theme.display, "B", 16)
         pdf.set_xy(panel.x + 2, panel.y + 2)
         pdf.cell(20, 8, "" if ctx.undated else str(d.day), align="L")
-        pdf.set_font(theme.body, "B", 6.5)
+        pdf.set_font(theme.body, "B", 8.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         name = d.strftime("%a").upper()
         try:
             # Weekday labels are searchable: keep tracking in budget.
-            pdf.set_char_spacing(searchable_tracking(6.5, 0.8))
+            pdf.set_char_spacing(searchable_tracking(8.5, 0.8))
         except Exception:
             pass
         tw = pdf.get_string_width(name)
@@ -2255,12 +2252,12 @@ def _weekly_hourly(pdf: FPDF, ctx: PageContext, week_index: int,
             pdf.line(tx, panel.y + 8, tx, panel.y2)
         if labels:
             hour_labels = ["6", "8", "10", "12", "2", "4", "6", "8", "10"]
-            theme.set_type(pdf, "mini_digit", size=5)
+            theme.set_type(pdf, "mini_digit", size=9)
             pdf.set_text_color(*theme.rgb("text_light"))
             for i, hl in enumerate(hour_labels):
                 tx = rx + (i * 2) * spacing
-                pdf.set_xy(tx - 4, panel.y + 2.5)
-                pdf.cell(8, 3.5, hl, align="C")
+                pdf.set_xy(tx - 5, panel.y + 2.2)
+                pdf.cell(10, 4, hl, align="C")
             _plain_reset(pdf, theme)
         # Baseline under the row
         pdf.set_draw_color(*theme.border_c())
@@ -2277,14 +2274,14 @@ def _weekly_hourly(pdf: FPDF, ctx: PageContext, week_index: int,
     # Extras row
     extras = rrows[3].split_h([0.34, 0.38, 0.28], gap=4)
     y = section_label(pdf, theme, extras[0].x, extras[0].y, "Priorities",
-                      size=7)
+                      size=9)
     priority_rows(pdf, theme, ctx.motif,
                   Panel(extras[0].x, y, extras[0].w, extras[0].y2 - y - 2))
-    y = section_label(pdf, theme, extras[1].x, extras[1].y, "Habits", size=7)
+    y = section_label(pdf, theme, extras[1].x, extras[1].y, "Habits", size=9)
     _habit_mini_grid(pdf, ctx, Panel(extras[1].x, y + 1, extras[1].w,
                                      extras[1].y2 - y - 3))
     y = section_label(pdf, theme, extras[2].x, extras[2].y, "Next Week",
-                      size=7)
+                      size=9)
     ruled_lines(pdf, theme, Panel(extras[2].x, y, extras[2].w,
                                   extras[2].y2 - y - 2), spacing=7)
     pdf.set_text_color(0, 0, 0)
@@ -2300,12 +2297,12 @@ def _weekly_airy(pdf: FPDF, ctx: PageContext, week_index: int,
     def day_section(panel: Panel, d: date) -> None:
         rule_y = panel.y + 8
         pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.3))
-        theme.set_type(pdf, "band_label", size=8)
+        theme.set_type(pdf, "band_label", size=10)
         pdf.set_xy(panel.x + 0.5, rule_y - 6.5)
         pdf.cell(panel.w * 0.6, 6, theme.case("band_label", d.strftime("%A")),
                  align="L")
         _plain_reset(pdf, theme)
-        pdf.set_font(theme.display, "", 13)
+        pdf.set_font(theme.display, "", 15)
         pdf.set_text_color(*blend(theme.rgb("text"), theme.rgb("primary"), 0.15))
         pdf.set_xy(panel.x2 - 20, rule_y - 7.5)
         pdf.cell(20, 7, "" if ctx.undated else str(d.day), align="R")
@@ -2417,7 +2414,7 @@ class DailyPage:
             h12 = hour if hour <= 12 else hour - 12
             ampm = "AM" if hour < 12 else "PM"
             label = "NOON" if hour == 12 else f"{h12} {ampm}"
-            theme.set_type(pdf, "mini_digit", size=6)
+            theme.set_type(pdf, "mini_digit", size=8)
             pdf.set_text_color(*theme.rgb("text_light"))
             pdf.set_xy(sched.x, hy)
             pdf.cell(12, row_h, label, align="L")
@@ -2487,7 +2484,7 @@ class DailyPage:
                      panel.w * 0.76, panel.h - 2, style="F",
                      round_corners=True, corner_radius=1.2)
             pdf.set_text_color(*theme.reverse_text_c())
-            pdf.set_font(theme.body, "B", 7)
+            pdf.set_font(theme.body, "B", 9)
             try:
                 pdf.set_char_spacing(0.5)
             except Exception:
@@ -2503,30 +2500,31 @@ class DailyPage:
         prompts = rc[2].rows(2, gap=2)
         for panel, label in zip(prompts, ("What I Am Excited About",
                                           "What I Am Grateful For")):
-            y = section_label(pdf, theme, panel.x, panel.y, label, size=7)
+            y = section_label(pdf, theme, panel.x, panel.y, label, size=9)
             ruled_lines(pdf, theme, Panel(panel.x, y - 1, panel.w,
                                           panel.y2 - y + 1), spacing=6.8)
         band(rc[3], "Evening Review")
         prompts = rc[4].rows(2, gap=2)
         for panel, label in zip(prompts, ("What Went Well Today",
                                           "What Can I Improve Tomorrow")):
-            y = section_label(pdf, theme, panel.x, panel.y, label, size=7)
+            y = section_label(pdf, theme, panel.x, panel.y, label, size=9)
             ruled_lines(pdf, theme, Panel(panel.x, y - 1, panel.w,
                                           panel.y2 - y + 1), spacing=6.8)
 
         # Sleep row
-        y = section_label(pdf, theme, rc[5].x, rc[5].y, "Sleep", size=7)
-        pdf.set_font(theme.body, "", 7)
+        y = section_label(pdf, theme, rc[5].x, rc[5].y, "Sleep", size=9)
+        pdf.set_font(theme.body, "", 9)
         pdf.set_text_color(*theme.rgb("text_light"))
         half = rc[5].w / 2
         for i, lbl in enumerate(("Woke up at", "Slept at")):
+            lw = pdf.get_string_width(lbl) + 1.5
             pdf.set_xy(rc[5].x + i * half, y + 1)
-            pdf.cell(18, 4, lbl, align="L")
+            pdf.cell(lw, 4.5, lbl, align="L")
             pdf.set_draw_color(*gr)
-            pdf.line(rc[5].x + i * half + 19, y + 5, rc[5].x + (i + 1) * half - 4,
-                     y + 5)
+            pdf.line(rc[5].x + i * half + lw + 1, y + 5,
+                     rc[5].x + (i + 1) * half - 4, y + 5)
         # Water intake row
-        y = section_label(pdf, theme, rc[6].x, rc[6].y, "Water Intake", size=7)
+        y = section_label(pdf, theme, rc[6].x, rc[6].y, "Water Intake", size=9)
         water_droplets(pdf, theme, rc[6].x + 4, y + 2, n=8, gap=7.5)
 
         # Trackers column
@@ -2538,13 +2536,13 @@ class DailyPage:
             pdf.set_line_width(0.28)
             pdf.rect(panel.x, panel.y, panel.w, panel.h, style="D",
                      round_corners=True, corner_radius=1.4)
-            theme.set_type(pdf, "inline_label", size=6)
+            theme.set_type(pdf, "inline_label", size=8.5)
             pdf.set_text_color(*theme.rgb("text_light"))
-            pdf.set_xy(panel.x + 2, panel.y + 0.6)
-            pdf.cell(24, 3, label.upper(), align="L")
+            pdf.set_xy(panel.x + 2, panel.y + 0.8)
+            pdf.cell(30, 4, label.upper(), align="L")
         _plain_reset(pdf, theme)
 
-        y = section_label(pdf, theme, tc[1].x, tc[1].y, "Mood", size=7)
+        y = section_label(pdf, theme, tc[1].x, tc[1].y, "Mood", size=9)
         mood_faces(pdf, theme, tc[1].x + 7, y, n=5, gap=9)
 
         y = section_label(pdf, theme, tc[2].x, tc[2].y, "Notes & Doodles")
@@ -2611,7 +2609,7 @@ class HabitTrackerPage:
         border = theme.border_c()
 
         # "MONTH ______" write-in line
-        theme.set_type(pdf, "inline_label", size=7.5)
+        theme.set_type(pdf, "inline_label", size=9.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(panel.x, panel.y)
         pdf.cell(16, 5, "MONTH", align="L")
@@ -2630,11 +2628,11 @@ class HabitTrackerPage:
         if band is not None:
             pdf.set_fill_color(*band)
             pdf.rect(grid.x, grid.y, grid.w, header_h, style="F")
-        pdf.set_font(theme.body, "B", 6.5)
+        pdf.set_font(theme.body, "B", 8.5)
         pdf.set_text_color(*theme.band_text_c())
         pdf.set_xy(grid.x, grid.y)
         pdf.cell(label_w, header_h, "HABIT", align="C")
-        pdf.set_font(theme.body, "B", 4.6)
+        pdf.set_font(theme.body, "B", 7)
         for d in range(n_days):
             pdf.set_xy(grid.x + label_w + d * cell_w, grid.y)
             pdf.cell(cell_w, header_h, str(d + 1), align="C")
@@ -2696,14 +2694,14 @@ class GoalSettingPage:
         pdf.set_fill_color(*theme.bullet_c())
         pdf.ellipse(card.x + 4, card.y + 4, 9, 9, style="F")
         pdf.set_text_color(*WHITE)
-        pdf.set_font(theme.body, "B", 9)
+        pdf.set_font(theme.body, "B", 11)
         pdf.set_xy(card.x + 4, card.y + 4)
         pdf.cell(9, 9, str(num), align="C")
 
         inner = Panel(card.x + 6, card.y + 5, card.w - 12, card.h - 10)
 
         # Goal line
-        theme.set_type(pdf, "inline_label", size=7.5)
+        theme.set_type(pdf, "inline_label", size=9.5)
         pdf.set_text_color(*theme.rgb("text_light"))
         pdf.set_xy(inner.x + 11, inner.y)
         pdf.cell(14, 6, "GOAL", align="L")
@@ -2712,17 +2710,18 @@ class GoalSettingPage:
         pdf.line(inner.x + 25, inner.y + 5, inner.x2, inner.y + 5)
 
         y = section_label(pdf, theme, inner.x, inner.y + 10, "Action Steps",
-                          size=7)
+                          size=9)
         checkbox_lines(pdf, theme, Panel(inner.x, y, inner.w, 26), spacing=8.6)
         y += 30
 
-        theme.set_type(pdf, "inline_label", size=7)
+        theme.set_type(pdf, "inline_label", size=9.5)
         pdf.set_text_color(*theme.rgb("text_light"))
+        dw = pdf.get_string_width("DEADLINE") + 2
         pdf.set_xy(inner.x, y)
-        pdf.cell(20, 5, "DEADLINE", align="L")
+        pdf.cell(dw, 5, "DEADLINE", align="L")
         _plain_reset(pdf, theme)
         pdf.set_draw_color(*gr)
-        pdf.line(inner.x + 21, y + 4.2, inner.x + inner.w * 0.45, y + 4.2)
+        pdf.line(inner.x + dw + 1, y + 4.2, inner.x + inner.w * 0.45, y + 4.2)
 
-        y = section_label(pdf, theme, inner.x, y + 8, "Progress", size=7)
+        y = section_label(pdf, theme, inner.x, y + 8, "Progress", size=9)
         progress_bar(pdf, theme, inner.x + 1, y + 0.5, inner.w - 6, h=5.5)

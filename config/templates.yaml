@@ -255,7 +255,8 @@ fonts:
       bold:
         - "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/static/PlayfairDisplay-Bold.ttf"
         - "https://raw.githubusercontent.com/google/fonts/main/ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf"
-  # Script accent face for month names / pennant flags.
+  # Script accent face -- display-size cover accents only (never functional
+  # labels: month names / pennants use the display serif for legibility).
   script:
     family: "PlannerScript"
     regular: "ScriptAccent-Regular.ttf"
@@ -267,7 +268,7 @@ fonts:
     subtitle: 18
     heading: 14
     body: 11
-    small: 9
+    small: 10
     tab: 8
     display_title: 46
     page_title: 19

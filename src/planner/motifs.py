@@ -48,7 +48,7 @@ def _number_beside(pdf: FPDF, theme: Theme, x: float, y: float, size: float,
                    number: int) -> float:
     """Draw the priority number beside a marker; return content start x."""
     pdf.set_text_color(*theme.rgb("text"))
-    pdf.set_font(theme.body, "B", 6.5)
+    pdf.set_font(theme.body, "B", 8.5)
     nx = x + size + 1.2
     pdf.set_xy(nx, y + (size - 4.2) / 2)
     pdf.cell(4.5, 4.2, str(number), align="L")
@@ -58,7 +58,7 @@ def _number_beside(pdf: FPDF, theme: Theme, x: float, y: float, size: float,
 def _number_overprint(pdf: FPDF, theme: Theme, x: float, y: float,
                       size: float, number: int) -> float:
     pdf.set_text_color(*WHITE)
-    pdf.set_font(theme.body, "B", 6.5)
+    pdf.set_font(theme.body, "B", 8.5)
     pdf.set_xy(x, y)
     pdf.cell(size, size, str(number), align="C")
     return x + size + 2.6
