@@ -25,6 +25,32 @@ def _palette_display_name(name: str) -> str:
         return name.replace("_", " ").replace("-", " ").title()
 
 
+#: Words whose casing ``capitalize()`` would get wrong in a listing title.
+_FIXED_CASING = {w.lower(): w for w in (
+    "ADHD", "iPad", "GoodNotes", "PDF", "DIY", "SMART", "A4", "A5",
+)}
+
+
+def _title_case_keyword(keyword: str, niche_name: str = "") -> str:
+    """Title-case a lowercase research keyword for the listing title.
+
+    ``str.title()`` mangles these ("adhd" -> "Adhd", "teacher's" ->
+    "Teacher'S"); this capitalizes each word (and each hyphen part) while
+    keeping known acronyms/brands and any all-caps word from the niche name.
+    """
+    fixed = dict(_FIXED_CASING)
+    for word in niche_name.split():
+        if word.isupper() and len(word) > 1:
+            fixed[word.lower()] = word
+
+    def case(word: str) -> str:
+        if word.lower() in fixed:
+            return fixed[word.lower()]
+        return "-".join(part[:1].upper() + part[1:] for part in word.split("-"))
+
+    return " ".join(case(w) for w in keyword.split())
+
+
 def _distinct_palettes(palettes: list[str] | None) -> list[str]:
     """De-duplicated palette list, order preserved (hero first)."""
     if not palettes:
@@ -80,7 +106,7 @@ class ListingSEO:
             niche_lower = niche_name.lower()
             for kw in keywords:
                 if kw.lower() not in niche_lower and niche_lower not in kw.lower():
-                    extra = kw.strip().title()
+                    extra = _title_case_keyword(kw, niche_name)
                     break
 
         # "With Digital Stickers" is the verified table-stakes title element
