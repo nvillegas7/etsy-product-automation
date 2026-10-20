@@ -51,6 +51,23 @@ def _title_case_keyword(keyword: str, niche_name: str = "") -> str:
     return " ".join(case(w) for w in keyword.split())
 
 
+def _fit_tag(tag: str) -> str:
+    """Shorten *tag* to Etsy's 20-char limit on a word boundary.
+
+    A hard cut wastes the tag ("kindle scribe teacher planner" ->
+    "kindle scribe teache"); dropping trailing words keeps a real phrase
+    ("kindle scribe").  Returns "" when that would leave a single word: a
+    lone fragment like "digital" adds nothing and, as a substring, would
+    knock a longer tag such as "digital planner" out as a near-duplicate.
+    """
+    if len(tag) <= MAX_TAG_LENGTH:
+        return tag
+    words = tag.split()
+    while words and len(" ".join(words)) > MAX_TAG_LENGTH:
+        words.pop()
+    return " ".join(words) if len(words) >= 2 else ""
+
+
 def _distinct_palettes(palettes: list[str] | None) -> list[str]:
     """De-duplicated palette list, order preserved (hero first)."""
     if not palettes:
@@ -292,7 +309,8 @@ class ListingSEO:
         date_label: str | None = None,
         with_stickers: bool = False,
     ) -> list[str]:
-        """Generate exactly 13 unique, lowercase tags (each <= 20 chars).
+        """Generate exactly 13 unique, lowercase tags (each <= 20 chars,
+        shortened on word boundaries, never cut mid-word).
 
         Combines broad platform terms, niche-specific keywords, and the
         publication year.  Deduplicates and avoids near-duplicate tags.
@@ -350,9 +368,8 @@ class ListingSEO:
         cleaned: list[str] = []
         seen_normalised: set[str] = set()
         for tag in raw_tags:
-            tag = re.sub(r"[^\w\s]", "", tag.replace("-", " ")).strip()
-            if len(tag) > MAX_TAG_LENGTH:
-                tag = tag[:MAX_TAG_LENGTH].rstrip()
+            tag = " ".join(re.sub(r"[^\w\s]", "", tag.replace("-", " ")).split())
+            tag = _fit_tag(tag)
             if not tag:
                 continue
 

@@ -341,7 +341,9 @@ class PipelineOrchestrator:
                         niche_cfg, niche_record.id, session, design=design_name
                     )
                     palettes = [palette_name]
-                display_title = f"{year} {niche_cfg.get('name') or humanize(niche_slug)}"
+                display_title = self._planner_display_title(
+                    niche_cfg, year, niche_slug
+                )
 
             product = product_repo.create(
                 niche_id=niche_record.id,
@@ -1374,6 +1376,29 @@ class PipelineOrchestrator:
             date_mode=date_mode,
         ))
 
+    @staticmethod
+    def _planner_display_title(
+        niche_cfg: dict, year: int, niche_slug: str = ""
+    ) -> str:
+        """Short human title for the cover, listing images and dashboard.
+
+        Leads with the dated span, so an academic niche reads "2026-2027
+        Teacher Planner" -- matching its cover -- instead of "2026 Teacher
+        Planner"; calendar-year niches keep "2026 Budget Planner".  Covers
+        strip this leading year/span themselves, so undated builds never
+        print it.
+        """
+        from src.planner.generator import PlannerSpec, _year_part
+        name = (
+            niche_cfg.get("name")
+            or humanize(niche_slug or niche_cfg.get("slug", ""))
+            or "Planner"
+        )
+        span = _year_part(PlannerSpec(
+            year=year, start_month=niche_cfg.get("start_month", 1)
+        ))
+        return f"{span} {name}"
+
     def _seo_sticker_count(self, product: Product) -> int:
         """Deterministic sticker count for SEO copy (0 = no stickers).
 
@@ -1437,7 +1462,8 @@ class PipelineOrchestrator:
 
         spec = self._build_planner_spec(
             title=product.title,
-            display_title=product.display_title or f"{product.year} {niche_cfg.get('name') or humanize(niche_cfg.get('slug', '')) or 'Planner'}",
+            display_title=product.display_title
+            or self._planner_display_title(niche_cfg, product.year),
             subtitle=niche_cfg.get("subtitle", ""),
             palette_name=palette_name or product.palette_name,
             year=product.year,
