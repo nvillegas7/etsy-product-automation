@@ -453,11 +453,12 @@ def _compose_hero(doc, palette: dict, title: str, product_type: str,
     _paste_with_shadow(canvas, cover, (CANVAS_W - 870, CANVAS_H // 2 + 40),
                        angle=-4)
 
-    # Left text block
+    # Left text block. Every line is fitted to max_w: past it, text runs
+    # into the tilted cover (the subtitle used to, at a fixed 56 px).
     tx, max_w = 170, 780
     kicker = ("DIGITAL PLANNER" if product_type == "planner"
               else "ILLUSTRATED STORYBOOK")
-    kfont = _font(54, bold=True)
+    kfont = _fit_font(draw, kicker, max_w, 54, bold=True)
     draw.text((tx, 500), kicker, font=kfont,
               fill=_blend(palette["primary"], palette["text"], 0.2))
 
@@ -473,7 +474,7 @@ def _compose_hero(doc, palette: dict, title: str, product_type: str,
 
     sub = ("Hyperlinked · iPad & Tablet Ready" if product_type == "planner"
            else "Print at Home · Read on Any Screen")
-    draw.text((tx, y + 40), sub, font=_font(56),
+    draw.text((tx, y + 40), sub, font=_fit_font(draw, sub, max_w, 56),
               fill=_blend(palette["text"], palette["primary"], 0.4))
 
     _badge(canvas, "INSTANT DOWNLOAD", tx + 300, y + 190, palette["primary"])
